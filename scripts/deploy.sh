@@ -31,9 +31,24 @@ if [[ -z "${PROJECT_ID}" ]]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ -f "${ROOT_DIR}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT_DIR}/.env"
+  set +a
+fi
+
 IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
 BACKEND_IMAGE="${IMAGE_BASE}/${BACKEND_SERVICE}:latest"
 FRONTEND_IMAGE="${IMAGE_BASE}/${FRONTEND_SERVICE}:latest"
+BACKEND_ENV_VARS="APP_ENV=production"
+
+if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+  BACKEND_ENV_VARS="${BACKEND_ENV_VARS},GEMINI_API_KEY=${GEMINI_API_KEY}"
+elif [[ -n "${GOOGLE_API_KEY:-}" ]]; then
+  BACKEND_ENV_VARS="${BACKEND_ENV_VARS},GEMINI_API_KEY=${GOOGLE_API_KEY}"
+fi
 
 echo "Using project: ${PROJECT_ID}"
 echo "Using region: ${REGION}"
@@ -64,6 +79,7 @@ gcloud run deploy "${BACKEND_SERVICE}" \
   --platform managed \
   --allow-unauthenticated \
   --port 8080 \
+  --set-env-vars "${BACKEND_ENV_VARS}" \
   --project "${PROJECT_ID}"
 
 BACKEND_URL="$(gcloud run services describe "${BACKEND_SERVICE}" \

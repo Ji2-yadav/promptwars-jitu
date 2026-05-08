@@ -1,28 +1,24 @@
-import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_settings
+from app.routes import health, plan, replan, updates
 
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "*")
 
-app = FastAPI(title="Deploy App API")
+settings = get_settings()
+allow_origins = settings.allowed_origins or ["*"]
+
+app = FastAPI(title="TripPilot AI API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_origin] if frontend_origin != "*" else ["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-@app.get("/")
-def root() -> dict[str, str]:
-    return {"service": "backend", "status": "ok"}
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
-
+app.include_router(health.router)
+app.include_router(plan.router)
+app.include_router(replan.router)
+app.include_router(updates.router)
