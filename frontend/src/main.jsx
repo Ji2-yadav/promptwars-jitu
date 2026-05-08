@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BarChart3,
@@ -21,10 +21,7 @@ import { StreamingItineraryView } from "./components/StreamingItineraryView.jsx"
 import { UpdatePanel } from "./components/UpdatePanel.jsx";
 import { ReplanResult } from "./components/ReplanResult.jsx";
 import { LoadingState } from "./components/LoadingState.jsx";
-import {
-  configureTelemetry,
-  trackTelemetryEvent,
-} from "./telemetry.js";
+import { configureTelemetry, trackTelemetryEvent } from "./telemetry.js";
 import "./styles.css";
 
 /* ── App phases ─────────────────────────────────────── */
@@ -226,78 +223,79 @@ function App() {
       </div>
 
       <main aria-label="TripPilot content" role="main">
-      {/* ── Phase: Wizard ────────────────────────── */}
-      {phase === "wizard" && (
-        <div className="wizard-page">
-          <div className="wizard-page-left">
-            <div className="wizard-page-headline">
-              <h1>
-                Plan your perfect trip
-                <span className="headline-spark"> with AI</span>
-              </h1>
-              <p>
-                Answer a few questions and TripPilot will stream a personalised
-                day-by-day itinerary built for your pace, budget, and interests.
-              </p>
-              <div className="feature-pills">
-                <span>Real-time streaming</span>
-                <span>Day-by-day plan</span>
-                <span>Risk-aware routing</span>
-                <span>Places + Routes API</span>
-                <span>Embedded Google Maps</span>
+        {/* ── Phase: Wizard ────────────────────────── */}
+        {phase === "wizard" && (
+          <div className="wizard-page">
+            <div className="wizard-page-left">
+              <div className="wizard-page-headline">
+                <h1>
+                  Plan your perfect trip
+                  <span className="headline-spark"> with AI</span>
+                </h1>
+                <p>
+                  Answer a few questions and TripPilot will stream a
+                  personalised day-by-day itinerary built for your pace, budget,
+                  and interests.
+                </p>
+                <div className="feature-pills">
+                  <span>Real-time streaming</span>
+                  <span>Day-by-day plan</span>
+                  <span>Risk-aware routing</span>
+                  <span>Places + Routes API</span>
+                  <span>Embedded Google Maps</span>
+                </div>
               </div>
             </div>
+            <div className="wizard-page-right">
+              <TripWizard onSubmit={handlePlan} isLoading={isPlanning} />
+            </div>
           </div>
-          <div className="wizard-page-right">
-            <TripWizard onSubmit={handlePlan} isLoading={isPlanning} />
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Phase: Planning / Done ────────────────── */}
-      {(phase === "planning" || phase === "done") && (
-        <div className="result-page">
-          {/* Main itinerary stream */}
-          <div className="result-main">
-            <StreamingItineraryView
-              itinerary={itinerary}
-              isPlanning={isPlanning}
-              trip={trip}
-              onReset={() => {
-                setPhase("wizard");
-                setItinerary(null);
-                setTrip(null);
-                setReplanResult(null);
-              }}
-            />
-          </div>
+        {/* ── Phase: Planning / Done ────────────────── */}
+        {(phase === "planning" || phase === "done") && (
+          <div className="result-page">
+            {/* Main itinerary stream */}
+            <div className="result-main">
+              <StreamingItineraryView
+                itinerary={itinerary}
+                isPlanning={isPlanning}
+                trip={trip}
+                onReset={() => {
+                  setPhase("wizard");
+                  setItinerary(null);
+                  setTrip(null);
+                  setReplanResult(null);
+                }}
+              />
+            </div>
 
-          {/* Right sidebar — disruption panel, only when done */}
-          {phase === "done" && (
-            <aside className="result-sidebar">
-              <UpdatePanel
-                updates={updates}
-                selectedUpdate={selectedUpdate}
-                onSelect={setSelectedUpdate}
-                onReplan={handleReplan}
-                disabled={!itinerary}
-                isLoading={replanning}
-                context={disruptionContext}
-                onContextChange={setDisruptionContext}
-                dayCount={itinerary?.days?.length || 1}
-              />
-              {replanning && (
-                <LoadingState label="Scoring disruption and generating replacements" />
-              )}
-              <ReplanResult
-                result={replanResult}
-                onApplyOption={handleApplyOption}
-                appliedOptionId={appliedOptionId}
-              />
-            </aside>
-          )}
-        </div>
-      )}
+            {/* Right sidebar — disruption panel, only when done */}
+            {phase === "done" && (
+              <aside className="result-sidebar">
+                <UpdatePanel
+                  updates={updates}
+                  selectedUpdate={selectedUpdate}
+                  onSelect={setSelectedUpdate}
+                  onReplan={handleReplan}
+                  disabled={!itinerary}
+                  isLoading={replanning}
+                  context={disruptionContext}
+                  onContextChange={setDisruptionContext}
+                  dayCount={itinerary?.days?.length || 1}
+                />
+                {replanning && (
+                  <LoadingState label="Scoring disruption and generating replacements" />
+                )}
+                <ReplanResult
+                  result={replanResult}
+                  onApplyOption={handleApplyOption}
+                  appliedOptionId={appliedOptionId}
+                />
+              </aside>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

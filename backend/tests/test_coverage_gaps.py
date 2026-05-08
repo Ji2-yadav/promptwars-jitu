@@ -12,7 +12,6 @@ from app.services.google_maps_service import (
 )
 from app.services.gemini_service import GeminiService, build_fallback_itinerary
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # health.py — root endpoint (line 8)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -48,6 +47,7 @@ def test_gemini_service_uses_vertexai_when_configured(monkeypatch):
         return s
 
     import google.genai as _genai  # noqa: F401 – ensure importable in test env
+
     captured = {}
 
     class FakeGenai:
@@ -64,7 +64,10 @@ def test_gemini_service_uses_vertexai_when_configured(monkeypatch):
     service.client = None
     service.provider = "fallback"
 
-    if service.settings.google_genai_use_vertexai and service.settings.google_cloud_project:
+    if (
+        service.settings.google_genai_use_vertexai
+        and service.settings.google_cloud_project
+    ):
         try:
             service.client = object()  # simulate successful client
             service.provider = "vertex_ai"
@@ -101,7 +104,9 @@ def test_gemini_service_falls_back_when_vertexai_import_fails(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_generate_itinerary_with_live_client(monkeypatch, trip_request, itinerary):
+async def test_generate_itinerary_with_live_client(
+    monkeypatch, trip_request, itinerary
+):
     """generate_itinerary calls _generate_validated when client is present."""
     from app.services import gemini_service as gm
 
@@ -128,7 +133,9 @@ async def test_generate_itinerary_with_live_client(monkeypatch, trip_request, it
 
 
 @pytest.mark.asyncio
-async def test_replan_itinerary_with_live_client(monkeypatch, replan_request, itinerary):
+async def test_replan_itinerary_with_live_client(
+    monkeypatch, replan_request, itinerary
+):
     """replan_itinerary calls _generate_validated when client is present."""
     from app.schemas.replan import ReplanResponse
     from app.services.gemini_service import build_fallback_replan
@@ -242,7 +249,9 @@ async def test_build_day_route_returns_none_when_no_coords(trip_request):
 
 
 @pytest.mark.asyncio
-async def test_build_day_route_returns_none_when_all_legs_fail(monkeypatch, trip_request):
+async def test_build_day_route_returns_none_when_all_legs_fail(
+    monkeypatch, trip_request
+):
     """_build_day_route returns None when _compute_route_leg raises for all pairs."""
     from app.schemas.itinerary import GooglePlace
     from app.services.gemini_service import build_fallback_itinerary
@@ -285,28 +294,48 @@ async def test_compute_route_leg_returns_cached_result(monkeypatch):
     service.enabled = True
 
     origin_place = GooglePlace(
-        query="A", latitude=35.0, longitude=139.0,
-        googleMapsUri="https://maps.google.com", source="google_places",
+        query="A",
+        latitude=35.0,
+        longitude=139.0,
+        googleMapsUri="https://maps.google.com",
+        source="google_places",
     )
     destination_place = GooglePlace(
-        query="B", latitude=35.1, longitude=139.1,
-        googleMapsUri="https://maps.google.com", source="google_places",
+        query="B",
+        latitude=35.1,
+        longitude=139.1,
+        googleMapsUri="https://maps.google.com",
+        source="google_places",
     )
     origin_item = ItineraryItem(
-        time="09:00", title="A", type="test", durationMinutes=60,
-        estimatedCost="low", why="test", accessibilityNotes="none", risk="low",
+        time="09:00",
+        title="A",
+        type="test",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="test",
+        accessibilityNotes="none",
+        risk="low",
         googlePlace=origin_place,
     )
     dest_item = ItineraryItem(
-        time="10:00", title="B", type="test", durationMinutes=60,
-        estimatedCost="low", why="test", accessibilityNotes="none", risk="low",
+        time="10:00",
+        title="B",
+        type="test",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="test",
+        accessibilityNotes="none",
+        risk="low",
         googlePlace=destination_place,
     )
 
     cache_key = "35.0,139.0:35.1,139.1:WALK"
     cached_leg = GoogleRouteLeg(
-        fromTitle="A", toTitle="B",
-        distanceMeters=500, durationMinutes=7,
+        fromTitle="A",
+        toTitle="B",
+        distanceMeters=500,
+        durationMinutes=7,
         googleMapsUri="https://maps.google.com/dir",
         source="google_routes",
     )
@@ -338,21 +367,39 @@ async def test_compute_route_leg_returns_none_on_http_error(monkeypatch):
     routes_cache.pop(cache_key, None)
 
     origin_place = GooglePlace(
-        query="X", latitude=lat_a, longitude=lon_a,
-        googleMapsUri="https://maps.google.com", source="google_places",
+        query="X",
+        latitude=lat_a,
+        longitude=lon_a,
+        googleMapsUri="https://maps.google.com",
+        source="google_places",
     )
     dest_place = GooglePlace(
-        query="Y", latitude=lat_b, longitude=lon_b,
-        googleMapsUri="https://maps.google.com", source="google_places",
+        query="Y",
+        latitude=lat_b,
+        longitude=lon_b,
+        googleMapsUri="https://maps.google.com",
+        source="google_places",
     )
     origin_item = ItineraryItem(
-        time="09:00", title="X", type="test", durationMinutes=60,
-        estimatedCost="low", why="test", accessibilityNotes="none", risk="low",
+        time="09:00",
+        title="X",
+        type="test",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="test",
+        accessibilityNotes="none",
+        risk="low",
         googlePlace=origin_place,
     )
     dest_item = ItineraryItem(
-        time="10:00", title="Y", type="test", durationMinutes=60,
-        estimatedCost="low", why="test", accessibilityNotes="none", risk="low",
+        time="10:00",
+        title="Y",
+        type="test",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="test",
+        accessibilityNotes="none",
+        risk="low",
         googlePlace=dest_place,
     )
 
@@ -403,12 +450,24 @@ def test_parse_route_leg_returns_none_when_routes_empty(trip_request):
 
     service = GoogleMapsService()
     origin = ItineraryItem(
-        time="09:00", title="A", type="t", durationMinutes=60,
-        estimatedCost="low", why="w", accessibilityNotes="n", risk="low",
+        time="09:00",
+        title="A",
+        type="t",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="w",
+        accessibilityNotes="n",
+        risk="low",
     )
     dest = ItineraryItem(
-        time="10:00", title="B", type="t", durationMinutes=60,
-        estimatedCost="low", why="w", accessibilityNotes="n", risk="low",
+        time="10:00",
+        title="B",
+        type="t",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="w",
+        accessibilityNotes="n",
+        risk="low",
     )
     result = service._parse_route_leg(origin, dest, {"routes": []})
     assert result is None
@@ -419,12 +478,24 @@ def test_parse_route_leg_returns_none_when_routes_key_missing(trip_request):
 
     service = GoogleMapsService()
     origin = ItineraryItem(
-        time="09:00", title="A", type="t", durationMinutes=60,
-        estimatedCost="low", why="w", accessibilityNotes="n", risk="low",
+        time="09:00",
+        title="A",
+        type="t",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="w",
+        accessibilityNotes="n",
+        risk="low",
     )
     dest = ItineraryItem(
-        time="10:00", title="B", type="t", durationMinutes=60,
-        estimatedCost="low", why="w", accessibilityNotes="n", risk="low",
+        time="10:00",
+        title="B",
+        type="t",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="w",
+        accessibilityNotes="n",
+        risk="low",
     )
     result = service._parse_route_leg(origin, dest, {})
     assert result is None
@@ -513,8 +584,14 @@ def test_has_coordinates_returns_false_without_place():
     from app.schemas.itinerary import ItineraryItem
 
     item = ItineraryItem(
-        time="09:00", title="T", type="t", durationMinutes=60,
-        estimatedCost="low", why="w", accessibilityNotes="n", risk="low",
+        time="09:00",
+        title="T",
+        type="t",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="w",
+        accessibilityNotes="n",
+        risk="low",
     )
     assert has_coordinates(item) is False
 
@@ -523,11 +600,20 @@ def test_has_coordinates_returns_false_with_partial_coords():
     from app.schemas.itinerary import GooglePlace, ItineraryItem
 
     item = ItineraryItem(
-        time="09:00", title="T", type="t", durationMinutes=60,
-        estimatedCost="low", why="w", accessibilityNotes="n", risk="low",
+        time="09:00",
+        title="T",
+        type="t",
+        durationMinutes=60,
+        estimatedCost="low",
+        why="w",
+        accessibilityNotes="n",
+        risk="low",
         googlePlace=GooglePlace(
-            query="q", latitude=None, longitude=139.0,
-            googleMapsUri="https://maps.google.com", source="google_places",
+            query="q",
+            latitude=None,
+            longitude=139.0,
+            googleMapsUri="https://maps.google.com",
+            source="google_places",
         ),
     )
     assert has_coordinates(item) is False
@@ -539,7 +625,9 @@ def test_has_coordinates_returns_false_with_partial_coords():
 
 
 @pytest.mark.asyncio
-async def test_call_gemini_timeout_triggers_fallback(monkeypatch, trip_request, itinerary):
+async def test_call_gemini_timeout_triggers_fallback(
+    monkeypatch, trip_request, itinerary
+):
     """When _call_gemini times out, _generate_validated uses the fallback_factory."""
     import asyncio as real_asyncio
 
@@ -552,6 +640,7 @@ async def test_call_gemini_timeout_triggers_fallback(monkeypatch, trip_request, 
     monkeypatch.setattr(service, "_call_gemini", raise_timeout)
 
     from app.schemas.itinerary import ItineraryResponse
+
     result = await service._generate_validated(
         "prompt",
         ItineraryResponse,

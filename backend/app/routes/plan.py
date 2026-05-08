@@ -6,6 +6,7 @@ Exposes two routes under ``/api``:
 - ``POST /api/plan/stream`` – streams the same response as newline-delimited JSON
   (NDJSON) so the UI can render days progressively as they arrive.
 """
+
 import asyncio
 import json
 

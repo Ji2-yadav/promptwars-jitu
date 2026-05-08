@@ -15,7 +15,6 @@ import {
   ShieldAlert,
   Sparkles,
   Star,
-  Thermometer,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -297,7 +296,6 @@ export function StreamingItineraryView({
           <StreamDayCard
             key={day.day}
             day={day}
-            index={index}
             destination={destination}
             isOpen={expandedDays.has(index)}
             isStreaming={isPlanning && index === itinerary.days.length - 1}
@@ -337,14 +335,7 @@ export function StreamingItineraryView({
    Stream Day Card
    ──────────────────────────────────────── */
 
-function StreamDayCard({
-  day,
-  index,
-  destination,
-  isOpen,
-  isStreaming,
-  onToggle,
-}) {
+function StreamDayCard({ day, destination, isOpen, isStreaming, onToggle }) {
   const [imgError, setImgError] = useState(false);
   const photoUrl = getActivityPhoto(day.theme, destination);
 

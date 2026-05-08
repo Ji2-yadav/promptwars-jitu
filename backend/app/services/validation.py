@@ -3,6 +3,7 @@
 Provides two thin helpers that wrap Python's ``json`` module and Pydantic's
 ``model_validate`` to give callers a uniform ``ValueError`` on bad input.
 """
+
 import json
 import re
 from typing import TypeVar

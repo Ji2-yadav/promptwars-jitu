@@ -6,6 +6,7 @@ Results are cached in-process with a 24-hour TTL to respect quota limits.
 When no API key is configured, the service degrades gracefully to search-URL
 fallbacks so the rest of the application remains fully functional.
 """
+
 from __future__ import annotations
 
 import asyncio
