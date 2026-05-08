@@ -1,3 +1,11 @@
+"""Trip planning endpoints – synchronous and streaming variants.
+
+Exposes two routes under ``/api``:
+
+- ``POST /api/plan`` – returns a complete :class:`ItineraryResponse` in one JSON body.
+- ``POST /api/plan/stream`` – streams the same response as newline-delimited JSON
+  (NDJSON) so the UI can render days progressively as they arrive.
+"""
 import asyncio
 import json
 
@@ -13,11 +21,14 @@ router = APIRouter(prefix="/api", tags=["plan"])
 
 @router.post("/plan", response_model=ItineraryResponse)
 async def plan_trip(request: TripRequest) -> ItineraryResponse:
+    """Generate a full day-by-day itinerary and return it as a single JSON response."""
     return await GeminiService().generate_itinerary(request)
 
 
 @router.post("/plan/stream")
 async def plan_trip_stream(request: TripRequest) -> StreamingResponse:
+    """Stream the itinerary as NDJSON, emitting status, summary, day, and complete events."""
+
     async def stream():
         yield encode_event({"type": "status", "message": "Sending trip brief to LLM"})
         itinerary = await GeminiService().generate_itinerary(request)
@@ -26,6 +37,11 @@ async def plan_trip_stream(request: TripRequest) -> StreamingResponse:
                 "type": "summary",
                 "summary": itinerary.summary.model_dump(mode="json"),
                 "tripHealth": itinerary.tripHealth.model_dump(mode="json"),
+                "googleServices": (
+                    itinerary.googleServices.model_dump(mode="json")
+                    if itinerary.googleServices
+                    else None
+                ),
             }
         )
 
@@ -39,6 +55,11 @@ async def plan_trip_stream(request: TripRequest) -> StreamingResponse:
                 "assumptions": itinerary.assumptions,
                 "fallbacks": itinerary.fallbacks,
                 "tripHealth": itinerary.tripHealth.model_dump(mode="json"),
+                "googleServices": (
+                    itinerary.googleServices.model_dump(mode="json")
+                    if itinerary.googleServices
+                    else None
+                ),
             }
         )
 

@@ -57,7 +57,9 @@ describe("TripWizard", () => {
       target: { value: "vegetarian, low walking" },
     });
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-    fireEvent.click(screen.getByRole("button", { name: /generate itinerary/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /generate itinerary/i }),
+    );
 
     expect(handleSubmit).toHaveBeenCalledWith(
       expect.objectContaining({

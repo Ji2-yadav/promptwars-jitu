@@ -11,13 +11,17 @@ describe("ItineraryView", () => {
   it("renders planning state", () => {
     render(<ItineraryView itinerary={null} isPlanning />);
 
-    expect(screen.getByText(/composing day-wise itinerary/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/composing day-wise itinerary/i),
+    ).toBeInTheDocument();
   });
 
   it("renders empty state", () => {
     render(<ItineraryView itinerary={null} isPlanning={false} />);
 
-    expect(screen.getByText(/itinerary stream appears here/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/itinerary stream appears here/i),
+    ).toBeInTheDocument();
   });
 
   it("renders itinerary days, health, assumptions, and streaming placeholder", () => {
@@ -25,14 +29,24 @@ describe("ItineraryView", () => {
 
     expect(screen.getByText("Tokyo")).toBeInTheDocument();
     expect(screen.getByText("Weather risk")).toBeInTheDocument();
-    expect(screen.getByText("Receiving next day from LLM...")).toBeInTheDocument();
-    expect(screen.getByText("Live weather was not checked.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Receiving next day from LLM..."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Live weather was not checked."),
+    ).toBeInTheDocument();
   });
 });
 
 describe("DayCard", () => {
   it("toggles details open and closed", () => {
-    render(<DayCard day={itinerary.days[0]} defaultOpen={false} isStreaming={false} />);
+    render(
+      <DayCard
+        day={itinerary.days[0]}
+        defaultOpen={false}
+        isStreaming={false}
+      />,
+    );
 
     expect(screen.queryByText("Breakfast market")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button"));
@@ -45,17 +59,31 @@ describe("DayCard", () => {
 describe("StreamingItineraryView", () => {
   it("renders nothing when no itinerary exists and planning is idle", () => {
     const { container } = render(
-      <StreamingItineraryView itinerary={null} isPlanning={false} trip={trip} onReset={vi.fn()} />,
+      <StreamingItineraryView
+        itinerary={null}
+        isPlanning={false}
+        trip={trip}
+        onReset={vi.fn()}
+      />,
     );
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders loading state during initial planning", () => {
-    render(<StreamingItineraryView itinerary={null} isPlanning trip={trip} onReset={vi.fn()} />);
+    render(
+      <StreamingItineraryView
+        itinerary={null}
+        isPlanning
+        trip={trip}
+        onReset={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText(/composing your itinerary/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /explore in google maps/i })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: /explore in google maps/i }),
+    ).toHaveAttribute(
       "href",
       expect.stringContaining("google.com/maps/search"),
     );
@@ -74,14 +102,16 @@ describe("StreamingItineraryView", () => {
 
     expect(screen.getByRole("heading", { name: "Tokyo" })).toBeInTheDocument();
     expect(screen.getByText("Trip Health")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /explore in google maps/i })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: /explore in google maps/i }),
+    ).toHaveAttribute("href", expect.stringContaining("Tokyo"));
+    expect(screen.getAllByRole("link", { name: /^maps$/i })[0]).toHaveAttribute(
       "href",
-      expect.stringContaining("Tokyo"),
+      expect.stringContaining("maps.google"),
     );
-    expect(screen.getAllByRole("link", { name: /maps/i })[0]).toHaveAttribute(
-      "href",
-      expect.stringContaining("google.com/maps/search"),
-    );
+    expect(
+      screen.getByTitle(/google map for markets and gardens/i),
+    ).toHaveAttribute("src", expect.stringContaining("google.com/maps"));
 
     fireEvent.click(screen.getByRole("button", { name: /new trip/i }));
     expect(onReset).toHaveBeenCalled();
@@ -97,9 +127,17 @@ describe("StreamingItineraryView", () => {
       />,
     );
 
-    expect(screen.getByText("Station architecture walk")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Station architecture walk").length,
+    ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: /show photo for station architecture walk/i }));
-    expect(screen.getByAltText("Station architecture walk")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /show photo for station architecture walk/i,
+      }),
+    );
+    expect(
+      screen.getByAltText("Station architecture walk"),
+    ).toBeInTheDocument();
   });
 });

@@ -66,6 +66,16 @@ def test_demo_updates_returns_disruption_catalog():
     assert {item["category"] for item in body} >= {"weather", "transport", "closure"}
 
 
+def test_google_status_does_not_expose_keys():
+    response = client.get("/api/google/status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "gemini" in body
+    assert "maps" in body
+    assert "key" not in str(body).lower()
+
+
 def test_plan_endpoint_uses_service_result(monkeypatch, trip_request):
     from app.services.gemini_service import GeminiService
 
@@ -97,7 +107,9 @@ def test_plan_stream_returns_ndjson(monkeypatch, trip_request):
     monkeypatch.setattr(GeminiService, "generate_itinerary", fake_generate)
     monkeypatch.setattr(plan.asyncio, "sleep", no_sleep)
 
-    response = client.post("/api/plan/stream", json=trip_request.model_dump(mode="json"))
+    response = client.post(
+        "/api/plan/stream", json=trip_request.model_dump(mode="json")
+    )
 
     assert response.status_code == 200
     lines = [line for line in response.text.splitlines() if line]

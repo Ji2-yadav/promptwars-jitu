@@ -1,7 +1,16 @@
-from datetime import timedelta
+"""Gemini AI service for itinerary generation and real-time disruption replanning.
+
+This module wraps the Google Gemini API (both direct API key and Vertex AI paths)
+with an LLM response cache, a JSON-validation loop with automated repair, and a
+deterministic fallback so the application stays functional without an API key.
+"""
+
 import asyncio
+from datetime import timedelta
+from typing import Callable, TypeVar
 
 from cachetools import TTLCache
+from pydantic import BaseModel
 
 from app.config import get_settings
 from app.schemas.itinerary import (
@@ -13,6 +22,7 @@ from app.schemas.itinerary import (
 )
 from app.schemas.replan import RecoveryOption, ReplanRequest, ReplanResponse
 from app.schemas.trip import TripRequest
+from app.services.google_maps_service import enrich_with_google_maps
 from app.services.prompt_service import (
     build_plan_prompt,
     build_repair_prompt,
@@ -20,35 +30,80 @@ from app.services.prompt_service import (
 )
 from app.services.validation import validate_json
 
-# Cache up to 100 recent LLM calls for 1 hour to reduce API latency and quota use.
-llm_cache = TTLCache(maxsize=100, ttl=3600)
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
+
+# Cache up to 100 recent LLM responses for 1 hour to reduce API latency and quota use.
+llm_cache: TTLCache = TTLCache(maxsize=100, ttl=3600)
 
 
 class GeminiService:
+    """Wraps the Google Gemini API for itinerary generation and disruption replanning.
+
+    Supports three provider modes selected automatically at construction time:
+    - ``gemini_api``: direct key-based access via the Google Gen AI SDK.
+    - ``vertex_ai``: Vertex AI access using Application Default Credentials.
+    - ``fallback``: deterministic rule-based planner used when no key is available.
+    """
+
     def __init__(self) -> None:
+        """Initialise the service and select the best available AI provider."""
         self.settings = get_settings()
         self.client = None
+        self.provider = "fallback"
+
+        # Prefer direct Gemini API key first.
         if self.settings.gemini_api_key:
             try:
-                from google import genai
+                from google import genai  # type: ignore[import-untyped]
 
                 self.client = genai.Client(api_key=self.settings.gemini_api_key)
-            except Exception:
+                self.provider = "gemini_api"
+            except Exception:  # pragma: no cover – import/auth errors at runtime
                 self.client = None
 
+        # Vertex AI overrides the direct key when both are configured.
+        if (
+            self.settings.google_genai_use_vertexai
+            and self.settings.google_cloud_project
+        ):
+            try:
+                from google import genai  # type: ignore[import-untyped]
+
+                self.client = genai.Client(
+                    vertexai=True,
+                    project=self.settings.google_cloud_project,
+                    location=self.settings.google_cloud_location,
+                )
+                self.provider = "vertex_ai"
+            except Exception:  # pragma: no cover – import/auth errors at runtime
+                if not self.client:
+                    self.provider = "fallback"
+
     async def generate_itinerary(self, trip_request: TripRequest) -> ItineraryResponse:
+        """Generate a full day-by-day itinerary for *trip_request*.
+
+        Uses the Gemini API when a client is configured, or returns a
+        deterministic fallback itinerary otherwise.  The result is always
+        enriched with Google Maps data before being returned.
+        """
         if not self.client:
-            return build_fallback_itinerary(trip_request)
+            itinerary = build_fallback_itinerary(trip_request)
+            return await enrich_with_google_maps(trip_request, itinerary, "fallback")
 
         prompt = build_plan_prompt(trip_request)
-        return await self._generate_validated(
+        itinerary = await self._generate_validated(
             prompt,
             ItineraryResponse,
             lambda: build_fallback_itinerary(trip_request),
             "ItineraryResponse",
         )
+        return await enrich_with_google_maps(trip_request, itinerary, self.provider)
 
     async def replan_itinerary(self, request: ReplanRequest) -> ReplanResponse:
+        """Generate disruption-recovery options for an active itinerary.
+
+        Returns a deterministic fallback when no Gemini client is available.
+        """
         if not self.client:
             return build_fallback_replan(request)
 
@@ -60,7 +115,24 @@ class GeminiService:
             "ReplanResponse",
         )
 
-    async def _generate_validated(self, prompt, model, fallback_factory, shape_name):
+    async def _generate_validated(
+        self,
+        prompt: str,
+        model: type[_ModelT],
+        fallback_factory: Callable[[], _ModelT],
+        shape_name: str,
+    ) -> _ModelT:
+        """Call Gemini, validate the JSON response, and repair or fall back on failure.
+
+        Args:
+            prompt: The LLM prompt string.
+            model: The Pydantic model class to validate against.
+            fallback_factory: Zero-argument callable returning a safe default.
+            shape_name: Human-readable schema name used in the repair prompt.
+
+        Returns:
+            A validated model instance, or the result of *fallback_factory*.
+        """
         try:
             text = await self._call_gemini(prompt)
             try:
@@ -73,6 +145,12 @@ class GeminiService:
             return fallback_factory()
 
     async def _call_gemini(self, prompt: str) -> str:
+        """Invoke the Gemini model and return the raw text response.
+
+        Results are cached by prompt to avoid redundant API calls within the
+        same cache TTL window.  The call is executed in a thread to avoid
+        blocking the event loop and is wrapped with a configurable timeout.
+        """
         if prompt in llm_cache:
             return llm_cache[prompt]
 
@@ -93,7 +171,9 @@ class GeminiService:
 
 def build_fallback_itinerary(trip_request: TripRequest) -> ItineraryResponse:
     day_count = min((trip_request.endDate - trip_request.startDate).days + 1, 5)
-    interest = trip_request.interests[0] if trip_request.interests else "local highlights"
+    interest = (
+        trip_request.interests[0] if trip_request.interests else "local highlights"
+    )
     low_walking = any("walking" in item.lower() for item in trip_request.constraints)
     days = []
 
@@ -111,9 +191,11 @@ def build_fallback_itinerary(trip_request: TripRequest) -> ItineraryResponse:
                         durationMinutes=90,
                         estimatedCost="low",
                         why="Starts with a flexible overview that can expand or contract around energy and weather.",
-                        accessibilityNotes="Use transit between stops; keep walking segments short."
-                        if low_walking
-                        else "Moderate walking with cafe breaks available.",
+                        accessibilityNotes=(
+                            "Use transit between stops; keep walking segments short."
+                            if low_walking
+                            else "Moderate walking with cafe breaks available."
+                        ),
                         risk="low",
                     ),
                     ItineraryItem(
@@ -131,7 +213,9 @@ def build_fallback_itinerary(trip_request: TripRequest) -> ItineraryResponse:
                         title=f"{interest.title()} experience with indoor backup",
                         type="experience",
                         durationMinutes=120,
-                        estimatedCost="medium" if trip_request.budget != "low" else "low",
+                        estimatedCost=(
+                            "medium" if trip_request.budget != "low" else "low"
+                        ),
                         why="Matches stated interests while preserving a backup if conditions change.",
                         accessibilityNotes="Choose a venue with elevator access and nearby transit where possible.",
                         risk="medium",
@@ -172,9 +256,7 @@ def build_fallback_replan(request: ReplanRequest) -> ReplanResponse:
         request.itinerary.days[0],
     )
     future_items = [
-        item
-        for item in affected_day.items
-        if item.time >= request.disruptionTime
+        item for item in affected_day.items if item.time >= request.disruptionTime
     ]
     affected = [item.title for item in future_items] or [affected_day.items[-1].title]
     replace_from = future_items[0].time if future_items else request.disruptionTime
@@ -185,9 +267,11 @@ def build_fallback_replan(request: ReplanRequest) -> ReplanResponse:
     option_one_items = [
         ItineraryItem(
             time=max(request.disruptionTime, replace_from),
-            title="Low-risk replacement near current route"
-            if not is_budget
-            else "Free neighborhood and market alternative",
+            title=(
+                "Low-risk replacement near current route"
+                if not is_budget
+                else "Free neighborhood and market alternative"
+            ),
             type="recovery-plan",
             durationMinutes=90 if is_tired else 120,
             estimatedCost="free" if is_budget else "low",
@@ -232,7 +316,10 @@ def build_fallback_replan(request: ReplanRequest) -> ReplanResponse:
             catchUpPlan="Resume the original itinerary at the next unaffected timed item.",
             tradeoffs=["May skip one lower-priority planned activity."],
             confidence=0.86,
-            nextActions=["Confirm the replacement is open before leaving.", "Use the closest transit-first route."],
+            nextActions=[
+                "Confirm the replacement is open before leaving.",
+                "Use the closest transit-first route.",
+            ],
         ),
         RecoveryOption(
             id="rest-first",
@@ -245,7 +332,10 @@ def build_fallback_replan(request: ReplanRequest) -> ReplanResponse:
             catchUpPlan="Shorten or skip the least important affected activity, then continue from the next meal or anchor stop.",
             tradeoffs=["Less sightseeing, lower fatigue risk."],
             confidence=0.8,
-            nextActions=["Pick a seated location near the next planned area.", "Move optional shopping to another day."],
+            nextActions=[
+                "Pick a seated location near the next planned area.",
+                "Move optional shopping to another day.",
+            ],
         ),
         RecoveryOption(
             id="swap-later",
@@ -258,7 +348,10 @@ def build_fallback_replan(request: ReplanRequest) -> ReplanResponse:
             catchUpPlan="Move the original affected item into a later fallback window if conditions improve.",
             tradeoffs=["More planning overhead, but preserves more trip intent."],
             confidence=0.74,
-            nextActions=["Check tomorrow's flexible windows.", "Save the disrupted item as a later fallback."],
+            nextActions=[
+                "Check tomorrow's flexible windows.",
+                "Save the disrupted item as a later fallback.",
+            ],
         ),
     ]
 

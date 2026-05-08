@@ -1,12 +1,25 @@
-import { Accessibility, ChevronDown, Clock3, Coins, MapPin, ShieldAlert } from "lucide-react";
+import {
+  Accessibility,
+  ChevronDown,
+  Clock3,
+  Coins,
+  MapPin,
+  ShieldAlert,
+} from "lucide-react";
 import { useState } from "react";
 
 export function DayCard({ day, defaultOpen = false, isStreaming = false }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <article className={isStreaming ? "day-accordion streaming-in" : "day-accordion"}>
-      <button className="day-summary" type="button" onClick={() => setOpen((value) => !value)}>
+    <article
+      className={isStreaming ? "day-accordion streaming-in" : "day-accordion"}
+    >
+      <button
+        className="day-summary"
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+      >
         <div className="day-badge">Day {day.day}</div>
         <div className="day-title">
           <strong>{day.theme}</strong>
@@ -18,7 +31,10 @@ export function DayCard({ day, defaultOpen = false, isStreaming = false }) {
       {open && (
         <div className="day-details">
           {day.items.map((item, index) => (
-            <div className="timeline-item" key={`${item.time}-${item.title}-${index}`}>
+            <div
+              className="timeline-item"
+              key={`${item.time}-${item.title}-${index}`}
+            >
               <div className="time-node">
                 <span>{item.time}</span>
               </div>

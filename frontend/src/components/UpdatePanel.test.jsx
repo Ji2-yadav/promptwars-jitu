@@ -40,11 +40,19 @@ describe("UpdatePanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /flight delayed/i }));
     fireEvent.change(screen.getByLabelText(/day/i), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: "16:30" } });
+    fireEvent.change(screen.getByLabelText(/time/i), {
+      target: { value: "16:30" },
+    });
 
     expect(onSelect).toHaveBeenCalledWith(updates[1]);
-    expect(onContextChange).toHaveBeenCalledWith({ affectedDay: 2, disruptionTime: "14:00" });
-    expect(onContextChange).toHaveBeenCalledWith({ affectedDay: 1, disruptionTime: "16:30" });
+    expect(onContextChange).toHaveBeenCalledWith({
+      affectedDay: 2,
+      disruptionTime: "14:00",
+    });
+    expect(onContextChange).toHaveBeenCalledWith({
+      affectedDay: 1,
+      disruptionTime: "16:30",
+    });
   });
 
   it("disables replan when no update is selected", () => {
@@ -62,6 +70,8 @@ describe("UpdatePanel", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /generate recovery options/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /generate recovery options/i }),
+    ).toBeDisabled();
   });
 });

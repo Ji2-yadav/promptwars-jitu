@@ -85,7 +85,7 @@ Right/bottom:
   Explanation + next actions
 ```
 
-No auth. No dashboard. No booking. No complex map.
+No auth. No booking. Keep the map focused on itinerary pins, place context, and recovery routing.
 
 **Core Workflow**
 
@@ -187,7 +187,7 @@ Replan response:
 
 **AI Integration**
 
-Use Gemini only from backend. Do not expose API keys to React.
+Use Gemini only from backend. Do not expose server-side Gemini, Places, or Routes keys to React; the frontend may receive a browser-restricted Maps Embed key.
 
 Python service shape:
 

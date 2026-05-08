@@ -1,6 +1,5 @@
 from app.schemas.replan import Disruption
 
-
 DEMO_UPDATES = [
     Disruption(
         id="heavy-rain",

@@ -8,15 +8,19 @@ describe("TripForm", () => {
   it("renders correctly", () => {
     render(<TripForm onSubmit={vi.fn()} isLoading={false} />);
     expect(screen.getByLabelText(/Trip planning form/i)).toBeDefined();
-    expect(screen.getByRole("button", { name: /Generate Itinerary/i })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /Generate Itinerary/i }),
+    ).toBeDefined();
   });
 
   it("calls onSubmit when submitted", () => {
     const handleSubmit = vi.fn();
-    const { container } = render(<TripForm onSubmit={handleSubmit} isLoading={false} />);
-    
+    const { container } = render(
+      <TripForm onSubmit={handleSubmit} isLoading={false} />,
+    );
+
     fireEvent.submit(container.querySelector("form"));
-    
+
     expect(handleSubmit).toHaveBeenCalled();
   });
 });

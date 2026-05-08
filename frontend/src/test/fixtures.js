@@ -18,6 +18,22 @@ export const itinerary = {
           why: "Keeps the morning flexible.",
           accessibilityNotes: "Flat route and seating nearby.",
           risk: "low",
+          mapQuery: "Breakfast market, Tokyo",
+          googleMapsUrl:
+            "https://www.google.com/maps/search/?api=1&query=Breakfast+market%2C+Tokyo",
+          googlePlace: {
+            query: "Breakfast market, Tokyo",
+            placeId: "tokyo-breakfast-market",
+            displayName: "Breakfast Market",
+            formattedAddress: "Tokyo, Japan",
+            latitude: 35.6804,
+            longitude: 139.769,
+            rating: 4.5,
+            userRatingCount: 1200,
+            googleMapsUri: "https://maps.google.com/?cid=breakfast",
+            primaryType: "market",
+            source: "google_places",
+          },
         },
         {
           time: "14:00",
@@ -28,8 +44,26 @@ export const itinerary = {
           why: "Matches the nature interest.",
           accessibilityNotes: "Use transit to reduce walking.",
           risk: "medium",
+          mapQuery: "Outdoor garden, Tokyo",
+          googleMapsUrl:
+            "https://www.google.com/maps/search/?api=1&query=Outdoor+garden%2C+Tokyo",
         },
       ],
+      googleRoute: {
+        travelMode: "WALK",
+        totalDistanceMeters: 1200,
+        totalDurationMinutes: 16,
+        legs: [
+          {
+            fromTitle: "Breakfast market",
+            toTitle: "Outdoor garden",
+            distanceMeters: 1200,
+            durationMinutes: 16,
+            googleMapsUri: "https://www.google.com/maps/dir/?api=1",
+            source: "google_routes",
+          },
+        ],
+      },
     },
     {
       day: 2,
@@ -54,6 +88,19 @@ export const itinerary = {
     score: 78,
     issues: ["Weather risk"],
     recommendations: ["Keep backup stops"],
+  },
+  googleServices: {
+    aiProvider: "gemini_api",
+    mapsConfigured: true,
+    placesResolved: 1,
+    routeLegsResolved: 1,
+    services: [
+      "Google Gemini API",
+      "Places API (New)",
+      "Routes API",
+      "Maps Embed API",
+    ],
+    notes: [],
   },
 };
 

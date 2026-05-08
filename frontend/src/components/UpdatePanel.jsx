@@ -45,7 +45,9 @@ export function UpdatePanel({
           return (
             <button
               className={
-                selectedUpdate?.id === update.id ? "update-button selected" : "update-button"
+                selectedUpdate?.id === update.id
+                  ? "update-button selected"
+                  : "update-button"
               }
               key={update.id}
               onClick={() => onSelect(update)}
@@ -68,11 +70,17 @@ export function UpdatePanel({
           <select
             value={context.affectedDay}
             onChange={(event) =>
-              onContextChange({ ...context, affectedDay: Number(event.target.value) })
+              onContextChange({
+                ...context,
+                affectedDay: Number(event.target.value),
+              })
             }
             disabled={disabled}
           >
-            {Array.from({ length: Math.max(dayCount, 1) }, (_, index) => index + 1).map((day) => (
+            {Array.from(
+              { length: Math.max(dayCount, 1) },
+              (_, index) => index + 1,
+            ).map((day) => (
               <option value={day} key={day}>
                 Day {day}
               </option>
@@ -88,7 +96,10 @@ export function UpdatePanel({
             type="time"
             value={context.disruptionTime}
             onChange={(event) =>
-              onContextChange({ ...context, disruptionTime: event.target.value })
+              onContextChange({
+                ...context,
+                disruptionTime: event.target.value,
+              })
             }
             disabled={disabled}
           />

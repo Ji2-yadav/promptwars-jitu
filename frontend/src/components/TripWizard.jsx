@@ -22,9 +22,24 @@ const STEPS = [
 ];
 
 const budgetOptions = [
-  { value: "low", label: "Budget", desc: "Hostels, street food, local transport", emoji: "B" },
-  { value: "medium", label: "Mid-range", desc: "Hotels, restaurants, some splurges", emoji: "M" },
-  { value: "high", label: "Luxury", desc: "5-star, fine dining, private transfers", emoji: "L" },
+  {
+    value: "low",
+    label: "Budget",
+    desc: "Hostels, street food, local transport",
+    emoji: "B",
+  },
+  {
+    value: "medium",
+    label: "Mid-range",
+    desc: "Hotels, restaurants, some splurges",
+    emoji: "M",
+  },
+  {
+    value: "high",
+    label: "Luxury",
+    desc: "5-star, fine dining, private transfers",
+    emoji: "L",
+  },
 ];
 
 const travelerOptions = [
@@ -36,14 +51,39 @@ const travelerOptions = [
 ];
 
 const paceOptions = [
-  { value: "relaxed", label: "Relaxed", desc: "Slow days, long lunches, no rush", icon: "R" },
-  { value: "balanced", label: "Balanced", desc: "Mix of sightseeing and downtime", icon: "B" },
-  { value: "packed", label: "Packed", desc: "See everything, maximize every hour", icon: "P" },
+  {
+    value: "relaxed",
+    label: "Relaxed",
+    desc: "Slow days, long lunches, no rush",
+    icon: "R",
+  },
+  {
+    value: "balanced",
+    label: "Balanced",
+    desc: "Mix of sightseeing and downtime",
+    icon: "B",
+  },
+  {
+    value: "packed",
+    label: "Packed",
+    desc: "See everything, maximize every hour",
+    icon: "P",
+  },
 ];
 
 const interestChips = [
-  "Food & Drink", "Culture", "History", "Art", "Shopping", "Nature",
-  "Adventure", "Nightlife", "Architecture", "Photography", "Wellness", "Sports",
+  "Food & Drink",
+  "Culture",
+  "History",
+  "Art",
+  "Shopping",
+  "Nature",
+  "Adventure",
+  "Nightlife",
+  "Architecture",
+  "Photography",
+  "Wellness",
+  "Sports",
 ];
 
 const popularDestinations = [
@@ -94,7 +134,12 @@ export function TripWizard({ onSubmit, isLoading }) {
   function canAdvance() {
     if (step === 0) return form.destination.trim().length > 0;
     if (step === 1) {
-      return form.startDate && form.endDate && form.endDate >= form.startDate && form.travelers;
+      return (
+        form.startDate &&
+        form.endDate &&
+        form.endDate >= form.startDate &&
+        form.travelers
+      );
     }
     if (step === 2) return form.budget && form.pace;
     return true;
@@ -108,9 +153,13 @@ export function TripWizard({ onSubmit, isLoading }) {
       budget: form.budget,
       travelers: form.travelers,
       pace: form.pace,
-      interests: form.interests.length > 0 ? form.interests : ["culture", "food"],
+      interests:
+        form.interests.length > 0 ? form.interests : ["culture", "food"],
       constraints: form.constraints
-        ? form.constraints.split(",").map((s) => s.trim()).filter(Boolean)
+        ? form.constraints
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
         : [],
     });
   }
@@ -120,15 +169,19 @@ export function TripWizard({ onSubmit, isLoading }) {
       ? Math.max(
           1,
           Math.round(
-            (new Date(form.endDate) - new Date(form.startDate)) / 86400000
-          ) + 1
+            (new Date(form.endDate) - new Date(form.startDate)) / 86400000,
+          ) + 1,
         )
       : null;
 
   return (
     <div className="wizard-shell">
       {/* Progress stepper */}
-      <div className="wizard-stepper" role="navigation" aria-label="Trip setup steps">
+      <div
+        className="wizard-stepper"
+        role="navigation"
+        aria-label="Trip setup steps"
+      >
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           const state = i < step ? "done" : i === step ? "active" : "idle";
@@ -164,15 +217,17 @@ export function TripWizard({ onSubmit, isLoading }) {
         {step === 2 && (
           <StepVibe form={form} set={set} toggleInterest={toggleInterest} />
         )}
-        {step === 3 && (
-          <StepReview form={form} tripDays={tripDays} />
-        )}
+        {step === 3 && <StepReview form={form} tripDays={tripDays} />}
       </div>
 
       {/* Navigation */}
       <div className="wizard-nav">
         {step > 0 ? (
-          <button className="wiz-btn wiz-btn--ghost" type="button" onClick={back}>
+          <button
+            className="wiz-btn wiz-btn--ghost"
+            type="button"
+            onClick={back}
+          >
             <ArrowLeft size={16} /> Back
           </button>
         ) : (
@@ -241,7 +296,9 @@ function StepDestination({ value, onChange }) {
               onClick={() => onChange(dest.name)}
               aria-pressed={value === dest.name}
             >
-              <span className="dest-emoji" aria-hidden="true">{dest.emoji}</span>
+              <span className="dest-emoji" aria-hidden="true">
+                {dest.emoji}
+              </span>
               <span className="dest-name">{dest.name}</span>
               <span className="dest-country">{dest.country}</span>
             </button>
@@ -286,7 +343,8 @@ function StepDatesAndTravelers({ form, set, tripDays }) {
 
       {tripDays && (
         <div className="trip-duration-badge">
-          <CalendarDays size={14} /> {tripDays} {tripDays === 1 ? "day" : "days"} in {form.destination || "paradise"}
+          <CalendarDays size={14} /> {tripDays}{" "}
+          {tripDays === 1 ? "day" : "days"} in {form.destination || "paradise"}
         </div>
       )}
 
@@ -302,7 +360,9 @@ function StepDatesAndTravelers({ form, set, tripDays }) {
             onClick={() => set("travelers", opt.value)}
             aria-pressed={form.travelers === opt.value}
           >
-            <span className="traveler-emoji" aria-hidden="true">{opt.emoji}</span>
+            <span className="traveler-emoji" aria-hidden="true">
+              {opt.emoji}
+            </span>
             <span>{opt.label}</span>
           </button>
         ))}
@@ -333,7 +393,9 @@ function StepVibe({ form, set, toggleInterest }) {
             onClick={() => set("budget", opt.value)}
             aria-pressed={form.budget === opt.value}
           >
-            <span className="budget-emoji" aria-hidden="true">{opt.emoji}</span>
+            <span className="budget-emoji" aria-hidden="true">
+              {opt.emoji}
+            </span>
             <strong>{opt.label}</strong>
             <span className="budget-desc">{opt.desc}</span>
           </button>
@@ -352,7 +414,9 @@ function StepVibe({ form, set, toggleInterest }) {
             onClick={() => set("pace", opt.value)}
             aria-pressed={form.pace === opt.value}
           >
-            <span className="pace-icon" aria-hidden="true">{opt.icon}</span>
+            <span className="pace-icon" aria-hidden="true">
+              {opt.icon}
+            </span>
             <strong>{opt.label}</strong>
             <span className="pace-desc">{opt.desc}</span>
           </button>
@@ -377,7 +441,9 @@ function StepVibe({ form, set, toggleInterest }) {
       </div>
 
       <label className="wiz-label" style={{ marginTop: "16px" }}>
-        <span>Any constraints? <small>(optional)</small></span>
+        <span>
+          Any constraints? <small>(optional)</small>
+        </span>
         <input
           className="wiz-input"
           type="text"
@@ -393,7 +459,9 @@ function StepVibe({ form, set, toggleInterest }) {
 /* ─── Step 4: Review ──────────────────────────────────────── */
 function StepReview({ form, tripDays }) {
   const selectedBudget = budgetOptions.find((b) => b.value === form.budget);
-  const selectedTraveler = travelerOptions.find((t) => t.value === form.travelers);
+  const selectedTraveler = travelerOptions.find(
+    (t) => t.value === form.travelers,
+  );
   const selectedPace = paceOptions.find((p) => p.value === form.pace);
 
   return (
@@ -409,16 +477,41 @@ function StepReview({ form, tripDays }) {
           <Globe size={22} />
           <div>
             <strong>{form.destination}</strong>
-            {tripDays && <span>{tripDays} days · {form.startDate} → {form.endDate}</span>}
+            {tripDays && (
+              <span>
+                {tripDays} days · {form.startDate} → {form.endDate}
+              </span>
+            )}
           </div>
         </div>
 
         <div className="review-grid">
-          <ReviewItem emoji={selectedTraveler?.emoji} label="Travelers" value={selectedTraveler?.label} />
-          <ReviewItem emoji={selectedBudget?.emoji} label="Budget" value={selectedBudget?.label} />
-          <ReviewItem emoji={selectedPace?.icon} label="Pace" value={selectedPace?.label} />
+          <ReviewItem
+            emoji={selectedTraveler?.emoji}
+            label="Travelers"
+            value={selectedTraveler?.label}
+          />
+          <ReviewItem
+            emoji={selectedBudget?.emoji}
+            label="Budget"
+            value={selectedBudget?.label}
+          />
+          <ReviewItem
+            emoji={selectedPace?.icon}
+            label="Pace"
+            value={selectedPace?.label}
+          />
           {form.interests.length > 0 && (
-            <ReviewItem emoji="✨" label="Interests" value={form.interests.slice(0, 3).join(", ") + (form.interests.length > 3 ? ` +${form.interests.length - 3}` : "")} />
+            <ReviewItem
+              emoji="✨"
+              label="Interests"
+              value={
+                form.interests.slice(0, 3).join(", ") +
+                (form.interests.length > 3
+                  ? ` +${form.interests.length - 3}`
+                  : "")
+              }
+            />
           )}
         </div>
 
@@ -431,7 +524,9 @@ function StepReview({ form, tripDays }) {
 
       <p className="review-note">
         <Sparkles size={13} />
-        TripPilot will stream your personalised day-by-day itinerary in real time. Days appear as the AI generates them — you can browse early while it finishes.
+        TripPilot will stream your personalised day-by-day itinerary in real
+        time. Days appear as the AI generates them — you can browse early while
+        it finishes.
       </p>
     </div>
   );

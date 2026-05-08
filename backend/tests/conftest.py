@@ -65,7 +65,9 @@ def itinerary() -> ItineraryResponse:
         ],
         assumptions=["Live details need verification."],
         fallbacks=["Use an indoor stop if weather changes."],
-        tripHealth=TripHealth(score=78, issues=["Weather risk"], recommendations=["Keep backup stops"]),
+        tripHealth=TripHealth(
+            score=78, issues=["Weather risk"], recommendations=["Keep backup stops"]
+        ),
     )
 
 

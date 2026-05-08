@@ -1,13 +1,30 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Sparkles, Wifi, RadioTower } from "lucide-react";
-import { apiBaseUrl, planTripStream, replanTrip, fetchDemoUpdates } from "./api/client.js";
+import {
+  BarChart3,
+  Cpu,
+  MapPinned,
+  RadioTower,
+  Sparkles,
+  Wifi,
+} from "lucide-react";
+import {
+  apiBaseUrl,
+  fetchDemoUpdates,
+  fetchGoogleStatus,
+  planTripStream,
+  replanTrip,
+} from "./api/client.js";
 import { ErrorBanner } from "./components/ErrorBanner.jsx";
 import { TripWizard } from "./components/TripWizard.jsx";
 import { StreamingItineraryView } from "./components/StreamingItineraryView.jsx";
 import { UpdatePanel } from "./components/UpdatePanel.jsx";
 import { ReplanResult } from "./components/ReplanResult.jsx";
 import { LoadingState } from "./components/LoadingState.jsx";
+import {
+  configureTelemetry,
+  trackTelemetryEvent,
+} from "./telemetry.js";
 import "./styles.css";
 
 /* ── App phases ─────────────────────────────────────── */
@@ -29,8 +46,13 @@ function App() {
     disruptionTime: "14:00",
   });
   const [appliedOptionId, setAppliedOptionId] = useState("");
+  const [googleStatus, setGoogleStatus] = useState(null);
 
   const hasApi = useMemo(() => Boolean(apiBaseUrl), []);
+
+  useEffect(() => {
+    configureTelemetry();
+  }, []);
 
   useEffect(() => {
     fetchDemoUpdates()
@@ -39,6 +61,12 @@ function App() {
         setSelectedUpdate(items[0] || null);
       })
       .catch((err) => setError(`Could not load demo updates: ${err.message}`));
+  }, []);
+
+  useEffect(() => {
+    fetchGoogleStatus()
+      .then(setGoogleStatus)
+      .catch(() => setGoogleStatus(null));
   }, []);
 
   /* ── Plan handler ───────────────────────────────── */
@@ -58,6 +86,7 @@ function App() {
             assumptions: [],
             fallbacks: [],
             tripHealth: event.tripHealth,
+            googleServices: event.googleServices || null,
           });
         }
         if (event.type === "day") {
@@ -72,11 +101,17 @@ function App() {
             assumptions: event.assumptions,
             fallbacks: event.fallbacks,
             tripHealth: event.tripHealth,
+            googleServices: event.googleServices || cur?.googleServices || null,
           }));
         }
       });
 
       if (fallback) setItinerary(fallback);
+      trackTelemetryEvent("generate_itinerary", {
+        destination: nextTrip.destination,
+        travelers: nextTrip.travelers,
+        pace: nextTrip.pace,
+      });
       setDisruptionContext({ affectedDay: 1, disruptionTime: "14:00" });
       setAppliedOptionId("");
     } catch (err) {
@@ -104,6 +139,10 @@ function App() {
       });
       setReplanResult(result);
       setAppliedOptionId("");
+      trackTelemetryEvent("replan_disruption", {
+        category: selectedUpdate.category,
+        affected_day: disruptionContext.affectedDay,
+      });
     } catch (err) {
       setError(`Replan failed: ${err.message}`);
     } finally {
@@ -116,14 +155,16 @@ function App() {
     if (!itinerary) return;
     const affectedTitles = new Set(replanResult?.affectedItems || []);
     const affectedDay = option.affectedDay || disruptionContext.affectedDay;
-    const replaceFromTime = option.replaceFromTime || disruptionContext.disruptionTime;
+    const replaceFromTime =
+      option.replaceFromTime || disruptionContext.disruptionTime;
     const replaceUntilTime = option.replaceUntilTime || "23:59";
 
     const days = itinerary.days.map((day) => {
       if (day.day !== affectedDay) return day;
       const preserved = day.items.filter((item) => {
         const byTitle = affectedTitles.has(item.title);
-        const inWindow = item.time >= replaceFromTime && item.time <= replaceUntilTime;
+        const inWindow =
+          item.time >= replaceFromTime && item.time <= replaceUntilTime;
         return !byTitle && !inWindow;
       });
       const merged = [...preserved, ...option.replacementItems].sort((a, b) =>
@@ -156,21 +197,35 @@ function App() {
   const isPlanning = phase === "planning";
 
   return (
-    <div className="app-v2">
+    <div className="app-v2" id="main-content">
       {/* ── Global top bar ── */}
-      <header className="topbar-v2">
+      <header className="topbar-v2" role="banner">
         <div className="topbar-v2-brand">
           <Sparkles size={16} className="brand-spark" />
           <span>TripPilot AI</span>
         </div>
-        <div className={hasApi ? "api-pill api-pill--on" : "api-pill"}>
-          {hasApi ? <Wifi size={13} /> : <RadioTower size={13} />}
-          {hasApi ? "API connected" : "Set VITE_API_BASE_URL"}
+        <div className="topbar-v2-status">
+          <GoogleStatus status={googleStatus} />
+          <div className={hasApi ? "api-pill api-pill--on" : "api-pill"}>
+            {hasApi ? <Wifi size={13} /> : <RadioTower size={13} />}
+            {hasApi ? "API connected" : "Set VITE_API_BASE_URL"}
+          </div>
         </div>
       </header>
 
       <ErrorBanner message={error} />
 
+      {/* ── Accessible live region for streaming status ── */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        id="status-announcer"
+      >
+        {isPlanning ? "Generating your travel itinerary, please wait…" : ""}
+      </div>
+
+      <main aria-label="TripPilot content" role="main">
       {/* ── Phase: Wizard ────────────────────────── */}
       {phase === "wizard" && (
         <div className="wizard-page">
@@ -181,13 +236,15 @@ function App() {
                 <span className="headline-spark"> with AI</span>
               </h1>
               <p>
-                Answer a few questions and TripPilot will stream a personalised day-by-day itinerary built for your pace, budget, and interests.
+                Answer a few questions and TripPilot will stream a personalised
+                day-by-day itinerary built for your pace, budget, and interests.
               </p>
               <div className="feature-pills">
                 <span>Real-time streaming</span>
                 <span>Day-by-day plan</span>
                 <span>Risk-aware routing</span>
-                <span>Google Maps recovery links</span>
+                <span>Places + Routes API</span>
+                <span>Embedded Google Maps</span>
               </div>
             </div>
           </div>
@@ -229,7 +286,9 @@ function App() {
                 onContextChange={setDisruptionContext}
                 dayCount={itinerary?.days?.length || 1}
               />
-              {replanning && <LoadingState label="Scoring disruption and generating replacements" />}
+              {replanning && (
+                <LoadingState label="Scoring disruption and generating replacements" />
+              )}
               <ReplanResult
                 result={replanResult}
                 onApplyOption={handleApplyOption}
@@ -239,6 +298,35 @@ function App() {
           )}
         </div>
       )}
+      </main>
+    </div>
+  );
+}
+
+function GoogleStatus({ status }) {
+  if (!status) return null;
+
+  const mapsReady = status.maps?.placesApi || status.maps?.embedApi;
+  const analyticsReady = status.analytics?.googleAnalytics;
+
+  return (
+    <div className="google-status-strip" aria-label="Google services status">
+      <span
+        className={
+          status.gemini?.configured ? "google-service on" : "google-service"
+        }
+      >
+        <Cpu size={12} />
+        {status.gemini?.provider === "vertex_ai" ? "Vertex AI" : "Gemini"}
+      </span>
+      <span className={mapsReady ? "google-service on" : "google-service"}>
+        <MapPinned size={12} />
+        Maps
+      </span>
+      <span className={analyticsReady ? "google-service on" : "google-service"}>
+        <BarChart3 size={12} />
+        Analytics
+      </span>
     </div>
   );
 }

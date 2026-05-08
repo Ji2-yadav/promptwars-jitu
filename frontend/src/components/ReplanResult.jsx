@@ -13,7 +13,10 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
       <section className="replan-result empty-recovery">
         <Route size={28} />
         <h2>Recovery options appear here</h2>
-        <p>Pick the disruption moment and TripPilot will suggest the smallest useful itinerary changes.</p>
+        <p>
+          Pick the disruption moment and TripPilot will suggest the smallest
+          useful itinerary changes.
+        </p>
       </section>
     );
   }
@@ -26,7 +29,8 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
           label: "Replacement",
           strategy: result.reasoningSummary,
           replacementItems: result.replacementItems,
-          catchUpPlan: "Resume the original itinerary after the replacement block.",
+          catchUpPlan:
+            "Resume the original itinerary after the replacement block.",
           tradeoffs: [],
           confidence: result.confidence,
           nextActions: result.nextActions,
@@ -77,14 +81,19 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
                   </span>
                 )}
               </div>
-              <small aria-label={`Confidence: ${Math.round(option.confidence * 100)}%`}>
+              <small
+                aria-label={`Confidence: ${Math.round(option.confidence * 100)}%`}
+              >
                 {Math.round(option.confidence * 100)}%
               </small>
             </div>
             <p>{option.strategy}</p>
 
             {option.replacementItems.map((item) => (
-              <div className="replacement" key={`${option.id}-${item.time}-${item.title}`}>
+              <div
+                className="replacement"
+                key={`${option.id}-${item.time}-${item.title}`}
+              >
                 <CornerDownRight size={16} aria-hidden="true" />
                 <div>
                   <strong>
@@ -119,7 +128,9 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
               disabled={appliedOptionId === option.id}
               aria-pressed={appliedOptionId === option.id}
             >
-              {appliedOptionId === option.id ? "Applied To Itinerary" : "Apply This Option"}
+              {appliedOptionId === option.id
+                ? "Applied To Itinerary"
+                : "Apply This Option"}
             </button>
           </article>
         ))}

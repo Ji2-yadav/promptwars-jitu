@@ -40,7 +40,11 @@ export function TripForm({ onSubmit, isLoading }) {
   }
 
   return (
-    <form className="trip-console" onSubmit={handleSubmit} aria-label="Trip planning form">
+    <form
+      className="trip-console"
+      onSubmit={handleSubmit}
+      aria-label="Trip planning form"
+    >
       <div className="console-hero" aria-hidden="true">
         <div className="hero-icon">
           <Plane size={24} />
@@ -51,12 +55,21 @@ export function TripForm({ onSubmit, isLoading }) {
         </div>
       </div>
 
-      <label className="field-shell destination-field" htmlFor="destination-input">
+      <label
+        className="field-shell destination-field"
+        htmlFor="destination-input"
+      >
         <span>
           <MapPin size={16} aria-hidden="true" />
           Destination
         </span>
-        <input id="destination-input" name="destination" defaultValue={initialTrip.destination} required aria-required="true" />
+        <input
+          id="destination-input"
+          name="destination"
+          defaultValue={initialTrip.destination}
+          required
+          aria-required="true"
+        />
       </label>
 
       <div className="date-row">
@@ -65,27 +78,64 @@ export function TripForm({ onSubmit, isLoading }) {
             <CalendarDays size={16} aria-hidden="true" />
             Start
           </span>
-          <input id="start-date-input" name="startDate" type="date" defaultValue={initialTrip.startDate} required aria-required="true" />
+          <input
+            id="start-date-input"
+            name="startDate"
+            type="date"
+            defaultValue={initialTrip.startDate}
+            required
+            aria-required="true"
+          />
         </label>
         <label className="field-shell" htmlFor="end-date-input">
           <span>
             <CalendarDays size={16} aria-hidden="true" />
             End
           </span>
-          <input id="end-date-input" name="endDate" type="date" defaultValue={initialTrip.endDate} required aria-required="true" />
+          <input
+            id="end-date-input"
+            name="endDate"
+            type="date"
+            defaultValue={initialTrip.endDate}
+            required
+            aria-required="true"
+          />
         </label>
       </div>
 
-      <SegmentGroup icon={Wallet} label="Budget" name="budget" options={budgets} selected="medium" />
-      <SegmentGroup icon={Users} label="Travelers" name="travelers" options={travelers} selected="family" />
-      <SegmentGroup icon={Gauge} label="Pace" name="pace" options={paces} selected="balanced" />
+      <SegmentGroup
+        icon={Wallet}
+        label="Budget"
+        name="budget"
+        options={budgets}
+        selected="medium"
+      />
+      <SegmentGroup
+        icon={Users}
+        label="Travelers"
+        name="travelers"
+        options={travelers}
+        selected="family"
+      />
+      <SegmentGroup
+        icon={Gauge}
+        label="Pace"
+        name="pace"
+        options={paces}
+        selected="balanced"
+      />
 
       <label className="field-shell" htmlFor="interests-input">
         <span>
           <Sparkles size={16} aria-hidden="true" />
           Interests
         </span>
-        <input id="interests-input" name="interests" defaultValue={initialTrip.interests} aria-describedby="interests-help" />
+        <input
+          id="interests-input"
+          name="interests"
+          defaultValue={initialTrip.interests}
+          aria-describedby="interests-help"
+        />
       </label>
 
       <label className="field-shell" htmlFor="constraints-input">
@@ -93,12 +143,17 @@ export function TripForm({ onSubmit, isLoading }) {
           <Sparkles size={16} aria-hidden="true" />
           Constraints
         </span>
-        <input id="constraints-input" name="constraints" defaultValue={initialTrip.constraints} aria-describedby="constraints-help" />
+        <input
+          id="constraints-input"
+          name="constraints"
+          defaultValue={initialTrip.constraints}
+          aria-describedby="constraints-help"
+        />
       </label>
 
-      <button 
-        className="primary-button launch-button" 
-        type="submit" 
+      <button
+        className="primary-button launch-button"
+        type="submit"
         disabled={isLoading}
         aria-busy={isLoading}
       >

@@ -6,11 +6,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import get_settings
-from app.routes import health, plan, replan, updates
-
+from app.routes import google, health, plan, replan, updates
 
 settings = get_settings()
-allow_origins = settings.allowed_origins or ["http://localhost:5173", "http://localhost:3000"]
+allow_origins = settings.allowed_origins or [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
 allow_credentials = "*" not in allow_origins
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["20/minute"])
@@ -29,6 +31,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(google.router)
 app.include_router(plan.router)
 app.include_router(replan.router)
 app.include_router(updates.router)

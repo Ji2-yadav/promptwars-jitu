@@ -9,6 +9,8 @@ import {
   Globe,
   Loader2,
   MapPin,
+  MapPinned,
+  Navigation,
   Route,
   ShieldAlert,
   Sparkles,
@@ -18,6 +20,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+const googleMapsEmbedApiKey =
+  import.meta.env.VITE_GOOGLE_MAPS_EMBED_API_KEY || "";
 
 // Uses Unsplash Source as free photo fallback (no key needed)
 function getDestinationPhoto(destination, seed = 0) {
@@ -46,11 +51,104 @@ function googleMapsDirectionsUrl(destination, place) {
   )}&travelmode=transit`;
 }
 
+function itemMapQuery(item, destination) {
+  return (
+    item.mapQuery ||
+    item.googlePlace?.formattedAddress ||
+    `${item.title}, ${destination}`
+  );
+}
+
+function itemGoogleMapsUrl(item, destination) {
+  return (
+    item.googlePlace?.googleMapsUri ||
+    item.googleMapsUrl ||
+    googleMapsSearchUrl(itemMapQuery(item, destination))
+  );
+}
+
+function buildDayEmbedUrl(day, destination) {
+  // Only include stops that have an actual mapped Google Place or explicit mapQuery
+  // This prevents abstract activities (like "Orientation loop") from breaking the directions map
+  const reliableStops = (day.items || [])
+    .filter(
+      (item) =>
+        item.googlePlace?.placeId ||
+        item.googlePlace?.formattedAddress ||
+        item.mapQuery,
+    )
+    .map((item) => {
+      if (item.googlePlace?.placeId) {
+        return `place_id:${item.googlePlace.placeId}`;
+      }
+      return item.mapQuery || item.googlePlace?.formattedAddress;
+    });
+
+  // If no reliable stops, fallback to the first stop's title or just the destination
+  if (reliableStops.length === 0) {
+    const firstStopQuery =
+      day.items && day.items.length > 0
+        ? itemMapQuery(day.items[0], destination)
+        : destination;
+    return googleMapsEmbedApiKey
+      ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsEmbedApiKey)}&q=${encodeURIComponent(firstStopQuery)}`
+      : `https://www.google.com/maps?q=${encodeURIComponent(firstStopQuery)}&output=embed`;
+  }
+
+  if (googleMapsEmbedApiKey && reliableStops.length > 1) {
+    const origin = reliableStops[0];
+    const destinationStop = reliableStops[reliableStops.length - 1];
+    const waypoints = reliableStops.slice(1, -1).slice(0, 8).join("|");
+    const waypointParam = waypoints
+      ? `&waypoints=${encodeURIComponent(waypoints)}`
+      : "";
+    return (
+      "https://www.google.com/maps/embed/v1/directions" +
+      `?key=${encodeURIComponent(googleMapsEmbedApiKey)}` +
+      `&origin=${encodeURIComponent(origin)}` +
+      `&destination=${encodeURIComponent(destinationStop)}` +
+      waypointParam +
+      "&mode=transit"
+    );
+  }
+
+  if (googleMapsEmbedApiKey) {
+    return (
+      "https://www.google.com/maps/embed/v1/place" +
+      `?key=${encodeURIComponent(googleMapsEmbedApiKey)}` +
+      `&q=${encodeURIComponent(reliableStops[0])}`
+    );
+  }
+
+  if (reliableStops.length > 1) {
+    const origin = reliableStops[0];
+    const destinationStop = reliableStops[reliableStops.length - 1];
+    const waypoints = reliableStops.slice(1, -1).slice(0, 8).join("|");
+    const waypointParam = waypoints
+      ? `&waypoints=${encodeURIComponent(waypoints)}`
+      : "";
+    return (
+      "https://www.google.com/maps/dir/?api=1" +
+      `&origin=${encodeURIComponent(origin)}` +
+      `&destination=${encodeURIComponent(destinationStop)}` +
+      waypointParam +
+      "&travelmode=transit&output=embed"
+    );
+  }
+
+  return `https://www.google.com/maps?q=${encodeURIComponent(reliableStops[0])}&output=embed`;
+}
+
 /* ─────────────────────────────────────────
    Streaming Itinerary View
    ──────────────────────────────────────── */
 
-export function StreamingItineraryView({ itinerary, isPlanning, trip, onReset }) {
+export function StreamingItineraryView({
+  itinerary,
+  isPlanning,
+  trip,
+  onReset,
+}) {
   const bottomRef = useRef(null);
   const [expandedDays, setExpandedDays] = useState(new Set([0]));
   const [heroLoaded, setHeroLoaded] = useState(false);
@@ -76,7 +174,8 @@ export function StreamingItineraryView({ itinerary, isPlanning, trip, onReset })
     return null; // handled by parent — wizard shown
   }
 
-  const destination = itinerary?.summary?.destination || trip?.destination || "your destination";
+  const destination =
+    itinerary?.summary?.destination || trip?.destination || "your destination";
   const heroUrl = getDestinationPhoto(destination, 0);
 
   const healthScore = itinerary?.tripHealth?.score ?? null;
@@ -100,23 +199,41 @@ export function StreamingItineraryView({ itinerary, isPlanning, trip, onReset })
         <div className="stream-hero-content">
           <div className="stream-hero-eyebrow">
             <Sparkles size={13} />
-            {isPlanning ? "Generating your itinerary…" : "Your AI-crafted itinerary"}
+            {isPlanning
+              ? "Generating your itinerary…"
+              : "Your AI-crafted itinerary"}
           </div>
           <h1 className="stream-hero-title">{destination}</h1>
           {itinerary?.summary && (
             <div className="stream-hero-meta">
-              <span><Globe size={13} /> {itinerary.summary.tripStyle} pace</span>
+              <span>
+                <Globe size={13} /> {itinerary.summary.tripStyle} pace
+              </span>
               {trip?.startDate && (
-                <span><Clock3 size={13} /> {trip.startDate} → {trip.endDate}</span>
+                <span>
+                  <Clock3 size={13} /> {trip.startDate} → {trip.endDate}
+                </span>
               )}
               {itinerary.days?.length > 0 && (
-                <span><Route size={13} /> {itinerary.days.length} day{itinerary.days.length !== 1 ? "s" : ""} planned</span>
+                <span>
+                  <Route size={13} /> {itinerary.days.length} day
+                  {itinerary.days.length !== 1 ? "s" : ""} planned
+                </span>
+              )}
+              {itinerary.googleServices?.placesResolved > 0 && (
+                <span>
+                  <MapPinned size={13} />{" "}
+                  {itinerary.googleServices.placesResolved} Google places
+                </span>
               )}
             </div>
           )}
 
           {healthScore !== null && (
-            <div className="stream-health-badge" style={{ "--health-color": healthColor }}>
+            <div
+              className="stream-health-badge"
+              style={{ "--health-color": healthColor }}
+            >
               <TrendingUp size={14} />
               <strong>{healthScore}</strong>
               <span>Trip Health</span>
@@ -134,7 +251,12 @@ export function StreamingItineraryView({ itinerary, isPlanning, trip, onReset })
           </a>
         </div>
 
-        <button className="stream-hero-reset" type="button" onClick={onReset} title="Start over">
+        <button
+          className="stream-hero-reset"
+          type="button"
+          onClick={onReset}
+          title="Start over"
+        >
           ← New Trip
         </button>
       </div>
@@ -193,19 +315,20 @@ export function StreamingItineraryView({ itinerary, isPlanning, trip, onReset })
       </div>
 
       {/* ── Assumptions & Fallbacks ────────────────── */}
-      {!isPlanning &&
-        itinerary?.assumptions?.length > 0 && (
-          <div className="stream-assumptions">
-            <h3>
-              <Zap size={15} /> Assumptions & Fallbacks
-            </h3>
-            <ul>
-              {[...itinerary.assumptions, ...(itinerary.fallbacks || [])].map((item) => (
+      {!isPlanning && itinerary?.assumptions?.length > 0 && (
+        <div className="stream-assumptions">
+          <h3>
+            <Zap size={15} /> Assumptions & Fallbacks
+          </h3>
+          <ul>
+            {[...itinerary.assumptions, ...(itinerary.fallbacks || [])].map(
+              (item) => (
                 <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+              ),
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -214,7 +337,14 @@ export function StreamingItineraryView({ itinerary, isPlanning, trip, onReset })
    Stream Day Card
    ──────────────────────────────────────── */
 
-function StreamDayCard({ day, index, destination, isOpen, isStreaming, onToggle }) {
+function StreamDayCard({
+  day,
+  index,
+  destination,
+  isOpen,
+  isStreaming,
+  onToggle,
+}) {
   const [imgError, setImgError] = useState(false);
   const photoUrl = getActivityPhoto(day.theme, destination);
 
@@ -222,14 +352,20 @@ function StreamDayCard({ day, index, destination, isOpen, isStreaming, onToggle 
   day.items?.forEach((item) => {
     if (item.risk in riskCounts) riskCounts[item.risk]++;
   });
-  const worstRisk = riskCounts.high > 0 ? "high" : riskCounts.medium > 0 ? "medium" : "low";
+  const worstRisk =
+    riskCounts.high > 0 ? "high" : riskCounts.medium > 0 ? "medium" : "low";
 
   return (
     <article
       className={`sday-card sday-card--risk-${worstRisk} ${isStreaming ? "sday-card--streaming" : ""}`}
     >
       {/* Card header */}
-      <button className="sday-header" type="button" onClick={onToggle} aria-expanded={isOpen}>
+      <button
+        className="sday-header"
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+      >
         {/* Day thumbnail */}
         {!imgError ? (
           <div className="sday-thumb">
@@ -261,13 +397,15 @@ function StreamDayCard({ day, index, destination, isOpen, isStreaming, onToggle 
           </div>
           <strong className="sday-theme">{day.theme}</strong>
           <div className="sday-sub">
-            <span><Clock3 size={12} /> {day.items?.length ?? 0} stops</span>
+            <span>
+              <Clock3 size={12} /> {day.items?.length ?? 0} stops
+            </span>
             {day.items?.length > 0 && (
               <span>
                 <Coins size={12} />{" "}
-                {day.items
-                  .filter((i) => i.estimatedCost && i.estimatedCost !== "free")
-                  .length > 0
+                {day.items.filter(
+                  (i) => i.estimatedCost && i.estimatedCost !== "free",
+                ).length > 0
                   ? "Paid activities"
                   : "Mostly free"}
               </span>
@@ -284,6 +422,7 @@ function StreamDayCard({ day, index, destination, isOpen, isStreaming, onToggle 
       {/* Expanded content */}
       {isOpen && (
         <div className="sday-body">
+          <GoogleDayMap day={day} destination={destination} />
           <div className="sday-timeline">
             {day.items?.map((item, i) => (
               <ActivityItem
@@ -297,6 +436,56 @@ function StreamDayCard({ day, index, destination, isOpen, isStreaming, onToggle 
         </div>
       )}
     </article>
+  );
+}
+
+function GoogleDayMap({ day, destination }) {
+  const src = buildDayEmbedUrl(day, destination);
+  const route = day.googleRoute;
+  const totalDistanceKm = route?.totalDistanceMeters
+    ? (route.totalDistanceMeters / 1000).toFixed(1)
+    : null;
+
+  return (
+    <div className="sday-map-panel">
+      <div className="sday-map-head">
+        <span>
+          <MapPinned size={14} />
+          Google itinerary map
+        </span>
+        {route?.totalDurationMinutes && (
+          <small>
+            <Navigation size={12} />
+            {route.totalDurationMinutes} min walk
+            {totalDistanceKm ? ` · ${totalDistanceKm} km` : ""}
+          </small>
+        )}
+      </div>
+      <iframe
+        className="sday-map-frame"
+        title={`Google map for ${day.theme}`}
+        src={src}
+        loading="lazy"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      <div className="sday-pin-list">
+        {day.items?.map((item, index) => (
+          <a
+            key={`${item.time}-${item.title}`}
+            href={itemGoogleMapsUrl(item, destination)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span>{index + 1}</span>
+            <strong>{item.googlePlace?.displayName || item.title}</strong>
+            {item.googlePlace?.rating && (
+              <small>{item.googlePlace.rating.toFixed(1)} Google rating</small>
+            )}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -333,7 +522,11 @@ function ActivityItem({ item, isLast, destination }) {
             type="button"
             onClick={() => setShowPhoto((p) => !p)}
             title={showPhoto ? "Hide photo" : "Show photo"}
-            aria-label={showPhoto ? `Hide photo for ${item.title}` : `Show photo for ${item.title}`}
+            aria-label={
+              showPhoto
+                ? `Hide photo for ${item.title}`
+                : `Show photo for ${item.title}`
+            }
             aria-pressed={showPhoto}
           >
             <Star size={11} />
@@ -366,11 +559,17 @@ function ActivityItem({ item, isLast, destination }) {
         )}
 
         <div className="sact-meta">
-          <span><MapPin size={11} /> {item.type}</span>
-          <span><Clock3 size={11} /> {item.durationMinutes} min</span>
-          <span><Coins size={11} /> {item.estimatedCost}</span>
+          <span>
+            <MapPin size={11} /> {item.type}
+          </span>
+          <span>
+            <Clock3 size={11} /> {item.durationMinutes} min
+          </span>
+          <span>
+            <Coins size={11} /> {item.estimatedCost}
+          </span>
           <a
-            href={googleMapsSearchUrl(`${item.title} ${destination}`)}
+            href={itemGoogleMapsUrl(item, destination)}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -383,6 +582,11 @@ function ActivityItem({ item, isLast, destination }) {
           >
             <Route size={11} /> Transit
           </a>
+          {item.googlePlace?.rating && (
+            <span>
+              <Star size={11} /> {item.googlePlace.rating.toFixed(1)}
+            </span>
+          )}
         </div>
 
         {item.accessibilityNotes && (

@@ -126,6 +126,13 @@ In frontend code, read it with:
 import.meta.env.VITE_API_BASE_URL
 ```
 
+The Google Maps Embed browser key and optional Google Analytics ID are also passed at build time:
+
+```sh
+VITE_GOOGLE_MAPS_EMBED_API_KEY
+VITE_GA_MEASUREMENT_ID
+```
+
 ## 5. Deploy
 
 From the repo root:
@@ -142,6 +149,8 @@ REGION=us-central1 \
 REPOSITORY=deploy-app \
 BACKEND_SERVICE=deploy-app-backend \
 FRONTEND_SERVICE=deploy-app-frontend \
+GOOGLE_MAPS_API_KEY=server_maps_key_here \
+GOOGLE_MAPS_EMBED_API_KEY=browser_restricted_embed_key_here \
 ./scripts/deploy.sh
 ```
 
@@ -152,10 +161,33 @@ The script will:
 3. Build and push the backend container.
 4. Deploy the backend to Cloud Run.
 5. Read the backend Cloud Run URL.
-6. Build and push the frontend container with `VITE_API_BASE_URL` set to the backend URL.
+6. Build and push the frontend container with `VITE_API_BASE_URL`, `VITE_GOOGLE_MAPS_EMBED_API_KEY`, and `VITE_GA_MEASUREMENT_ID` set.
 7. Deploy the frontend to Cloud Run.
 8. Update backend CORS with the frontend URL.
 9. Print both service URLs.
+
+The deploy script enables these Google services:
+
+```text
+Artifact Registry API
+Cloud Build API
+Cloud Run Admin API
+Generative Language API
+Vertex AI API
+Maps Embed API
+Places API (New)
+Routes API
+```
+
+For Vertex AI Gemini instead of API-key Gemini, set:
+
+```sh
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=promptwars-fade
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+The script attempts to grant `roles/aiplatform.user` to the default Cloud Run service account when Vertex mode is enabled.
 
 ## 6. Verify Deployment
 

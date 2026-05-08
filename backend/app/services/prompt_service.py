@@ -3,7 +3,6 @@ import json
 from app.schemas.replan import ReplanRequest
 from app.schemas.trip import TripRequest
 
-
 PLAN_PROMPT = """You are TripPilot AI, a dynamic travel recovery engine.
 Create a practical itinerary from the trip request.
 Return JSON only, without markdown.
@@ -68,7 +67,9 @@ def build_plan_prompt(trip_request: TripRequest) -> str:
 
 
 def build_replan_prompt(request: ReplanRequest) -> str:
-    return REPLAN_PROMPT + json.dumps(request.model_dump(mode="json"), ensure_ascii=True)
+    return REPLAN_PROMPT + json.dumps(
+        request.model_dump(mode="json"), ensure_ascii=True
+    )
 
 
 def build_repair_prompt(raw_text: str, validation_error: str, target_shape: str) -> str:

@@ -44,13 +44,31 @@ fi
 IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
 BACKEND_IMAGE="${IMAGE_BASE}/${BACKEND_SERVICE}:latest"
 FRONTEND_IMAGE="${IMAGE_BASE}/${FRONTEND_SERVICE}:latest"
-BACKEND_ENV_VARS="APP_ENV=production"
+BACKEND_ENV_VARS="APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION}"
+
+append_backend_env() {
+  local name="$1"
+  local value="$2"
+  if [[ -n "${value}" ]]; then
+    BACKEND_ENV_VARS="${BACKEND_ENV_VARS},${name}=${value}"
+  fi
+}
 
 if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-  BACKEND_ENV_VARS="${BACKEND_ENV_VARS},GEMINI_API_KEY=${GEMINI_API_KEY}"
+  append_backend_env "GEMINI_API_KEY" "${GEMINI_API_KEY}"
 elif [[ -n "${GOOGLE_API_KEY:-}" ]]; then
-  BACKEND_ENV_VARS="${BACKEND_ENV_VARS},GEMINI_API_KEY=${GOOGLE_API_KEY}"
+  append_backend_env "GEMINI_API_KEY" "${GOOGLE_API_KEY}"
 fi
+
+MAPS_SERVER_KEY="${GOOGLE_MAPS_API_KEY:-${GOOGLE_API_KEY:-}}"
+MAPS_EMBED_KEY="${GOOGLE_MAPS_EMBED_API_KEY:-${VITE_GOOGLE_MAPS_EMBED_API_KEY:-${GOOGLE_MAPS_API_KEY:-}}}"
+GA_MEASUREMENT_ID="${GOOGLE_ANALYTICS_ID:-${VITE_GA_MEASUREMENT_ID:-}}"
+
+append_backend_env "GOOGLE_MAPS_API_KEY" "${MAPS_SERVER_KEY}"
+append_backend_env "GOOGLE_MAPS_EMBED_API_KEY" "${MAPS_EMBED_KEY}"
+append_backend_env "GOOGLE_ANALYTICS_ID" "${GA_MEASUREMENT_ID}"
+append_backend_env "GOOGLE_GENAI_USE_VERTEXAI" "${GOOGLE_GENAI_USE_VERTEXAI:-}"
+append_backend_env "GEMINI_MODEL" "${GEMINI_MODEL:-}"
 
 echo "Using project: ${PROJECT_ID}"
 echo "Using region: ${REGION}"
@@ -58,9 +76,24 @@ echo "Using repository: ${REPOSITORY}"
 
 gcloud services enable \
   artifactregistry.googleapis.com \
+  aiplatform.googleapis.com \
   cloudbuild.googleapis.com \
+  generativelanguage.googleapis.com \
+  maps-embed-backend.googleapis.com \
+  places.googleapis.com \
   run.googleapis.com \
+  routes.googleapis.com \
   --project "${PROJECT_ID}"
+
+if [[ "${GOOGLE_GENAI_USE_VERTEXAI:-}" =~ ^(1|true|yes)$ ]]; then
+  PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
+  DEFAULT_RUN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+  echo "Granting Vertex AI user role to Cloud Run default service account"
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member "serviceAccount:${DEFAULT_RUN_SA}" \
+    --role "roles/aiplatform.user" \
+    --quiet >/dev/null || echo "Could not update Vertex AI IAM; continue if the service account already has access." >&2
+fi
 
 if ! gcloud artifacts repositories describe "${REPOSITORY}" \
   --location "${REGION}" \
@@ -101,7 +134,7 @@ BACKEND_URL="$(gcloud run services describe "${BACKEND_SERVICE}" \
 
 echo "Building frontend image: ${FRONTEND_IMAGE}"
 gcloud builds submit "${ROOT_DIR}/frontend" \
-  --substitutions "_VITE_API_BASE_URL=${BACKEND_URL},_IMAGE=${FRONTEND_IMAGE}" \
+  --substitutions "_VITE_API_BASE_URL=${BACKEND_URL},_VITE_GOOGLE_MAPS_EMBED_API_KEY=${MAPS_EMBED_KEY},_VITE_GA_MEASUREMENT_ID=${GA_MEASUREMENT_ID},_IMAGE=${FRONTEND_IMAGE}" \
   --config "${ROOT_DIR}/frontend/cloudbuild.yaml" \
   --project "${PROJECT_ID}" \
   --verbosity info

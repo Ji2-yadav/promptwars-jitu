@@ -1,69 +1,41 @@
 # TripPilot AI
 
-TripPilot AI is a dynamic travel recovery demo: generate a structured trip plan, simulate a real-world disruption, and replan around traveler constraints.
+## Submission
 
-## What it creates
+- Public GitHub repository: [https://github.com/Ji2-yadav/promptwars-jitu](https://github.com/Ji2-yadav/promptwars-jitu)
+- Complete project code: included in this repository under `backend/`, `frontend/`, `scripts/`, and `docs/`
+- Chosen vertical: Travel Planning & Experience Engine
 
-- `backend`: FastAPI service with `/api/plan`, `/api/replan`, `/api/live-updates/demo`, and `/health`.
-- `frontend`: Vite React one-screen workflow for trip setup, itinerary review, disruption simulation, and recovery results.
-- `scripts/deploy.sh`: one-command deploy that enables required APIs, creates an Artifact Registry repo, builds both containers, deploys both services, and wires the frontend to the backend URL.
+The previous detailed README content has been moved to [`docs/project-guide.md`](docs/project-guide.md). Google service details are documented in [`docs/google-services.md`](docs/google-services.md), and deployment steps are in [`docs/deployment-instructions.md`](docs/deployment-instructions.md).
 
-The backend uses Gemini when `GEMINI_API_KEY` is set. Without a key, it returns deterministic fallback plans so the demo still works locally and in judging environments.
+## Chosen Vertical
 
-## Prerequisites
+TripPilot AI targets the **Travel Planning & Experience Engine** vertical: planning trips dynamically with traveler preferences, budget, constraints, and changing real-world conditions.
 
-Install and authenticate the Google Cloud CLI:
+The project focuses on a practical travel recovery flow rather than a static itinerary generator. A traveler can create a trip plan, receive a day-by-day itinerary, simulate a disruption, and get an updated plan that explains what changed and why.
 
-```sh
-gcloud auth login
-gcloud auth application-default login
-gcloud config set project promptwars-fade
-```
+## Approach And Logic
 
-You also need billing enabled on the Google Cloud project.
+The solution is built around three decisions:
 
-## Deploy
+1. Treat the itinerary as structured data, not plain generated text.
+2. Keep AI calls on the backend so API keys and validation stay server-side.
+3. Make disruption recovery the main product moment, since the vertical requires dynamic replanning.
 
-```sh
-./scripts/deploy.sh
-```
+The backend validates trip inputs, prompts Gemini or Vertex AI Gemini for structured JSON, checks the result with Pydantic schemas, and falls back to deterministic plans when model credentials are unavailable. Google Maps services enrich itinerary items with place and route context when API keys are configured.
 
-Optional environment variables:
+## How The Solution Works
 
-```sh
-PROJECT_ID=promptwars-fade \
-REGION=us-central1 \
-REPOSITORY=deploy-app \
-BACKEND_SERVICE=deploy-app-backend \
-FRONTEND_SERVICE=deploy-app-frontend \
-GEMINI_API_KEY=your_key_here \
-./scripts/deploy.sh
-```
+The React frontend collects destination, dates, traveler type, pace, budget, interests, and constraints. It calls the FastAPI backend to generate an itinerary, then renders the plan with activity cards, map context, risk notes, and accessibility or budget guidance.
 
-At the end, the script prints the backend and frontend URLs.
+For dynamic updates, the frontend can send a disruption such as rain, a closure, fatigue, delay, or budget reduction. The backend compares that update against the original plan and traveler constraints, asks the AI service for recovery options, validates the response, and returns replacement activities, reasoning, confidence, and next actions.
 
-## Local Development
+The app is deployable as separate Cloud Run services for the backend and frontend. The deploy script builds containers, enables required Google Cloud APIs, deploys both services, and wires the frontend to the backend URL.
 
-Backend:
+## Assumptions
 
-```sh
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
-```
-
-Frontend:
-
-```sh
-cd frontend
-npm install
-VITE_API_BASE_URL=http://localhost:8080 npm run dev
-```
-
-Open:
-
-```text
-http://localhost:5173
-```
+- Demo disruptions are simulated so judging does not depend on unreliable live event feeds.
+- Google API keys are supplied through environment variables and are not committed to the repository.
+- Gemini or Vertex AI Gemini is preferred, but the app remains usable with deterministic fallback data when model credentials are missing.
+- The product does not handle booking, payments, user accounts, or authentication.
+- Maps enrichment improves the output when enabled, but itinerary generation and replanning still work without it.

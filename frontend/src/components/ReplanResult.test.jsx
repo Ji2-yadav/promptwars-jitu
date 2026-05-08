@@ -37,14 +37,24 @@ const result = {
 
 describe("ReplanResult", () => {
   it("renders empty state", () => {
-    render(<ReplanResult result={null} onApplyOption={vi.fn()} appliedOptionId="" />);
+    render(
+      <ReplanResult result={null} onApplyOption={vi.fn()} appliedOptionId="" />,
+    );
 
-    expect(screen.getByText(/recovery options appear here/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/recovery options appear here/i),
+    ).toBeInTheDocument();
   });
 
   it("renders recovery options and applies selected option", () => {
     const onApplyOption = vi.fn();
-    render(<ReplanResult result={result} onApplyOption={onApplyOption} appliedOptionId="" />);
+    render(
+      <ReplanResult
+        result={result}
+        onApplyOption={onApplyOption}
+        appliedOptionId=""
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /apply this option/i }));
 
@@ -62,6 +72,8 @@ describe("ReplanResult", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /applied to itinerary/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /applied to itinerary/i }),
+    ).toBeDisabled();
   });
 });

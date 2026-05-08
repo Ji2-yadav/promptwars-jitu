@@ -4,7 +4,10 @@ async function request(path, options = {}) {
   let response;
   try {
     response = await fetch(`${apiBaseUrl}${path}`, {
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
       ...options,
     });
   } catch (error) {
@@ -84,6 +87,10 @@ export function replanTrip(payload) {
 
 export function fetchDemoUpdates() {
   return request("/api/live-updates/demo");
+}
+
+export function fetchGoogleStatus() {
+  return request("/api/google/status");
 }
 
 export { apiBaseUrl };

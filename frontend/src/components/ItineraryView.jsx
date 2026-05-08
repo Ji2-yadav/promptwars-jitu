@@ -1,4 +1,10 @@
-import { BrainCircuit, CheckCircle2, Loader2, Route, Sparkles } from "lucide-react";
+import {
+  BrainCircuit,
+  CheckCircle2,
+  Loader2,
+  Route,
+  Sparkles,
+} from "lucide-react";
 import { DayCard } from "./DayCard.jsx";
 
 export function ItineraryView({ itinerary, isPlanning }) {
@@ -26,7 +32,10 @@ export function ItineraryView({ itinerary, isPlanning }) {
           <BrainCircuit size={32} />
         </div>
         <h2>Itinerary stream appears here</h2>
-        <p>Generate a trip and TripPilot will reveal the plan day by day with risk and recovery notes.</p>
+        <p>
+          Generate a trip and TripPilot will reveal the plan day by day with
+          risk and recovery notes.
+        </p>
       </section>
     );
   }

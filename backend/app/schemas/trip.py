@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import get_settings
 
-
 BudgetLevel = Literal["low", "medium", "high"]
 Pace = Literal["relaxed", "balanced", "packed"]
 TravelerType = Literal["solo", "couple", "family", "friends", "business"]
@@ -42,5 +41,7 @@ class TripRequest(BaseModel):
             raise ValueError("endDate must be on or after startDate")
         trip_days = (self.endDate - self.startDate).days + 1
         if trip_days > get_settings().max_trip_days:
-            raise ValueError(f"Trip length cannot exceed {get_settings().max_trip_days} days")
+            raise ValueError(
+                f"Trip length cannot exceed {get_settings().max_trip_days} days"
+            )
         return self
