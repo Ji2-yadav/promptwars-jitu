@@ -15,7 +15,7 @@ Install and authenticate the Google Cloud CLI:
 ```sh
 gcloud auth login
 gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project promptwars-fade
 ```
 
 You also need billing enabled on the Google Cloud project.
@@ -29,7 +29,7 @@ You also need billing enabled on the Google Cloud project.
 Optional environment variables:
 
 ```sh
-PROJECT_ID=your-project \
+PROJECT_ID=promptwars-fade \
 REGION=us-central1 \
 REPOSITORY=deploy-app \
 BACKEND_SERVICE=deploy-app-backend \
@@ -65,4 +65,3 @@ VITE_API_BASE_URL=http://localhost:8080 npm run dev
 - Keep `backend/app/main.py` exposing `app`, or update `backend/Dockerfile`.
 - Put your React app inside `frontend`.
 - Keep `npm run build` producing `frontend/dist`, or update `frontend/Dockerfile`.
-

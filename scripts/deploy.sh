@@ -18,20 +18,15 @@ if ! command -v gcloud >/dev/null 2>&1; then
   exit 1
 fi
 
-DEFAULT_PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
-if [[ "${DEFAULT_PROJECT}" == "(unset)" ]]; then
-  DEFAULT_PROJECT=""
-fi
-
-PROJECT_ID="${PROJECT_ID:-${DEFAULT_PROJECT}}"
+PROJECT_ID="${PROJECT_ID:-promptwars-fade}"
 REGION="${REGION:-us-central1}"
 REPOSITORY="${REPOSITORY:-deploy-app}"
 BACKEND_SERVICE="${BACKEND_SERVICE:-deploy-app-backend}"
 FRONTEND_SERVICE="${FRONTEND_SERVICE:-deploy-app-frontend}"
 
 if [[ -z "${PROJECT_ID}" ]]; then
-  echo "PROJECT_ID is not set and no gcloud default project is configured." >&2
-  echo "Run: gcloud config set project YOUR_PROJECT_ID" >&2
+  echo "PROJECT_ID is not set." >&2
+  echo "Run: PROJECT_ID=promptwars-fade ./scripts/deploy.sh" >&2
   exit 1
 fi
 

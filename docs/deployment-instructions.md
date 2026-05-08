@@ -5,7 +5,7 @@ This project deploys a React frontend and Python backend to Google Cloud Run wit
 Current Google Cloud defaults:
 
 ```sh
-PROJECT_ID=project-alpha-471619
+PROJECT_ID=promptwars-fade
 REGION=us-central1
 REPOSITORY=deploy-app
 BACKEND_SERVICE=deploy-app-backend
@@ -19,7 +19,7 @@ Make sure `gcloud` works:
 ```sh
 gcloud --version
 gcloud auth login
-gcloud config set project project-alpha-471619
+gcloud config set project promptwars-fade
 ```
 
 Check the active account and project:
@@ -33,7 +33,7 @@ gcloud projects list
 The active project should be:
 
 ```sh
-project-alpha-471619
+promptwars-fade
 ```
 
 ## 2. Confirm Billing Is Enabled
@@ -49,7 +49,7 @@ https://console.cloud.google.com/billing/projects
 Confirm billing is enabled for:
 
 ```sh
-project-alpha-471619
+promptwars-fade
 ```
 
 ## 3. Add Your Backend Code
@@ -137,7 +137,7 @@ From the repo root:
 Equivalent explicit command:
 
 ```sh
-PROJECT_ID=project-alpha-471619 \
+PROJECT_ID=promptwars-fade \
 REGION=us-central1 \
 REPOSITORY=deploy-app \
 BACKEND_SERVICE=deploy-app-backend \
@@ -164,7 +164,7 @@ Check services:
 ```sh
 gcloud run services list \
   --region us-central1 \
-  --project project-alpha-471619
+  --project promptwars-fade
 ```
 
 Check backend health:
@@ -190,7 +190,7 @@ If the frontend cannot call the backend, check:
 ```sh
 gcloud run services describe deploy-app-backend \
   --region us-central1 \
-  --project project-alpha-471619 \
+  --project promptwars-fade \
   --format='yaml(spec.template.spec.containers.env)'
 ```
 
@@ -201,7 +201,7 @@ If the backend fails to start, inspect logs:
 ```sh
 gcloud run services logs read deploy-app-backend \
   --region us-central1 \
-  --project project-alpha-471619 \
+  --project promptwars-fade \
   --limit 100
 ```
 
@@ -210,7 +210,7 @@ If the frontend fails to start, inspect logs:
 ```sh
 gcloud run services logs read deploy-app-frontend \
   --region us-central1 \
-  --project project-alpha-471619 \
+  --project promptwars-fade \
   --limit 100
 ```
 
@@ -231,11 +231,11 @@ Delete Cloud Run services:
 ```sh
 gcloud run services delete deploy-app-frontend \
   --region us-central1 \
-  --project project-alpha-471619
+  --project promptwars-fade
 
 gcloud run services delete deploy-app-backend \
   --region us-central1 \
-  --project project-alpha-471619
+  --project promptwars-fade
 ```
 
 Delete Artifact Registry repository:
@@ -243,6 +243,5 @@ Delete Artifact Registry repository:
 ```sh
 gcloud artifacts repositories delete deploy-app \
   --location us-central1 \
-  --project project-alpha-471619
+  --project promptwars-fade
 ```
-
