@@ -18,6 +18,8 @@ if ! command -v gcloud >/dev/null 2>&1; then
   exit 1
 fi
 
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+
 PROJECT_ID="${PROJECT_ID:-promptwars-fade}"
 REGION="${REGION:-us-central1}"
 REPOSITORY="${REPOSITORY:-deploy-app}"
@@ -52,6 +54,7 @@ fi
 
 echo "Using project: ${PROJECT_ID}"
 echo "Using region: ${REGION}"
+echo "Using repository: ${REPOSITORY}"
 
 gcloud services enable \
   artifactregistry.googleapis.com \
@@ -62,17 +65,26 @@ gcloud services enable \
 if ! gcloud artifacts repositories describe "${REPOSITORY}" \
   --location "${REGION}" \
   --project "${PROJECT_ID}" >/dev/null 2>&1; then
-  gcloud artifacts repositories create "${REPOSITORY}" \
+  echo "Creating Artifact Registry repository: ${REPOSITORY}"
+  if ! gcloud artifacts repositories create "${REPOSITORY}" \
     --repository-format docker \
     --location "${REGION}" \
     --description "Container images for deploy-app" \
-    --project "${PROJECT_ID}"
+    --project "${PROJECT_ID}"; then
+    echo "Repository create did not complete cleanly. Rechecking repository state..." >&2
+    gcloud artifacts repositories describe "${REPOSITORY}" \
+      --location "${REGION}" \
+      --project "${PROJECT_ID}" >/dev/null
+  fi
 fi
 
+echo "Building backend image: ${BACKEND_IMAGE}"
 gcloud builds submit "${ROOT_DIR}/backend" \
   --tag "${BACKEND_IMAGE}" \
-  --project "${PROJECT_ID}"
+  --project "${PROJECT_ID}" \
+  --verbosity info
 
+echo "Deploying backend service: ${BACKEND_SERVICE}"
 gcloud run deploy "${BACKEND_SERVICE}" \
   --image "${BACKEND_IMAGE}" \
   --region "${REGION}" \
@@ -87,11 +99,14 @@ BACKEND_URL="$(gcloud run services describe "${BACKEND_SERVICE}" \
   --project "${PROJECT_ID}" \
   --format 'value(status.url)')"
 
+echo "Building frontend image: ${FRONTEND_IMAGE}"
 gcloud builds submit "${ROOT_DIR}/frontend" \
   --substitutions "_VITE_API_BASE_URL=${BACKEND_URL},_IMAGE=${FRONTEND_IMAGE}" \
   --config "${ROOT_DIR}/frontend/cloudbuild.yaml" \
-  --project "${PROJECT_ID}"
+  --project "${PROJECT_ID}" \
+  --verbosity info
 
+echo "Deploying frontend service: ${FRONTEND_SERVICE}"
 gcloud run deploy "${FRONTEND_SERVICE}" \
   --image "${FRONTEND_IMAGE}" \
   --region "${REGION}" \
@@ -105,12 +120,27 @@ FRONTEND_URL="$(gcloud run services describe "${FRONTEND_SERVICE}" \
   --project "${PROJECT_ID}" \
   --format 'value(status.url)')"
 
+FRONTEND_CANONICAL_URL="$(gcloud run services list \
+  --region "${REGION}" \
+  --project "${PROJECT_ID}" \
+  --filter "metadata.name=${FRONTEND_SERVICE}" \
+  --format 'value(status.url)' | head -n 1)"
+
+ALLOWED_ORIGINS="${FRONTEND_URL}"
+if [[ -n "${FRONTEND_CANONICAL_URL}" && "${FRONTEND_CANONICAL_URL}" != "${FRONTEND_URL}" ]]; then
+  ALLOWED_ORIGINS="${ALLOWED_ORIGINS},${FRONTEND_CANONICAL_URL}"
+fi
+
+echo "Updating backend CORS origins"
 gcloud run services update "${BACKEND_SERVICE}" \
   --region "${REGION}" \
   --project "${PROJECT_ID}" \
-  --update-env-vars "FRONTEND_ORIGIN=${FRONTEND_URL}"
+  --update-env-vars "^|^FRONTEND_ORIGIN=${FRONTEND_CANONICAL_URL:-${FRONTEND_URL}}|ALLOWED_ORIGINS=${ALLOWED_ORIGINS}"
 
 echo
 echo "Deploy complete."
 echo "Backend:  ${BACKEND_URL}"
 echo "Frontend: ${FRONTEND_URL}"
+if [[ -n "${FRONTEND_CANONICAL_URL}" && "${FRONTEND_CANONICAL_URL}" != "${FRONTEND_URL}" ]]; then
+  echo "Frontend canonical: ${FRONTEND_CANONICAL_URL}"
+fi

@@ -34,8 +34,8 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
       ];
 
   return (
-    <section className="replan-result">
-      <div className="replan-head">
+    <section className="replan-result" aria-live="polite" aria-atomic="true">
+      <div className="replan-head" aria-hidden="true">
         <span>
           <GitBranch size={16} />
           Recovery plan
@@ -45,8 +45,8 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
       <h2>{result.changeSummary}</h2>
       <p>{result.reasoningSummary}</p>
 
-      <div className="affected-strip">
-        <span>
+      <div className="affected-strip" aria-label="Affected items">
+        <span aria-hidden="true">
           <ListChecks size={15} />
           Affected
         </span>
@@ -55,7 +55,7 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
         ))}
       </div>
 
-      <div className="option-list">
+      <div className="option-list" role="list" aria-label="Recovery options">
         {options.map((option) => (
           <article
             className={
@@ -64,24 +64,28 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
                 : "recovery-option"
             }
             key={option.id}
+            role="listitem"
+            aria-labelledby={`option-label-${option.id}`}
           >
             <div className="option-header">
               <div>
-                <strong>{option.label}</strong>
+                <strong id={`option-label-${option.id}`}>{option.label}</strong>
                 {option.id === result.recommendedOptionId && (
-                  <span>
-                    <ShieldCheck size={12} />
+                  <span aria-label="Recommended option">
+                    <ShieldCheck size={12} aria-hidden="true" />
                     Best fit
                   </span>
                 )}
               </div>
-              <small>{Math.round(option.confidence * 100)}%</small>
+              <small aria-label={`Confidence: ${Math.round(option.confidence * 100)}%`}>
+                {Math.round(option.confidence * 100)}%
+              </small>
             </div>
             <p>{option.strategy}</p>
 
             {option.replacementItems.map((item) => (
               <div className="replacement" key={`${option.id}-${item.time}-${item.title}`}>
-                <CornerDownRight size={16} />
+                <CornerDownRight size={16} aria-hidden="true" />
                 <div>
                   <strong>
                     {item.time} {item.title}
@@ -93,7 +97,7 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
             ))}
 
             <div className="catch-up">
-              <CheckCircle2 size={16} />
+              <CheckCircle2 size={16} aria-hidden="true" />
               <div>
                 <strong>Catch up</strong>
                 <p>{option.catchUpPlan}</p>
@@ -101,7 +105,7 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
             </div>
 
             {option.tradeoffs?.length > 0 && (
-              <div className="tradeoff-row">
+              <div className="tradeoff-row" aria-label="Tradeoffs">
                 {option.tradeoffs.map((tradeoff) => (
                   <span key={tradeoff}>{tradeoff}</span>
                 ))}
@@ -113,6 +117,7 @@ export function ReplanResult({ result, onApplyOption, appliedOptionId }) {
               type="button"
               onClick={() => onApplyOption(option)}
               disabled={appliedOptionId === option.id}
+              aria-pressed={appliedOptionId === option.id}
             >
               {appliedOptionId === option.id ? "Applied To Itinerary" : "Apply This Option"}
             </button>
