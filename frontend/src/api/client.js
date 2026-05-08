@@ -1,10 +1,15 @@
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "";
 
 async function request(path, options = {}) {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      ...options,
+    });
+  } catch (error) {
+    throw new Error(`Network request failed: ${error.message}`);
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -22,11 +27,16 @@ export function planTrip(trip) {
 }
 
 export async function planTripStream(trip, onEvent) {
-  const response = await fetch(`${apiBaseUrl}/api/plan/stream`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(trip),
-  });
+  let response;
+  try {
+    response = await fetch(`${apiBaseUrl}/api/plan/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(trip),
+    });
+  } catch {
+    return planTrip(trip);
+  }
 
   if (!response.ok || !response.body) {
     return planTrip(trip);
@@ -46,15 +56,23 @@ export async function planTripStream(trip, onEvent) {
 
     for (const line of lines) {
       if (!line.trim()) continue;
-      onEvent(JSON.parse(line));
+      onEvent(parseStreamEvent(line));
     }
   }
 
   if (buffer.trim()) {
-    onEvent(JSON.parse(buffer));
+    onEvent(parseStreamEvent(buffer));
   }
 
   return null;
+}
+
+function parseStreamEvent(line) {
+  try {
+    return JSON.parse(line);
+  } catch (error) {
+    throw new Error(`Invalid streaming response: ${error.message}`);
+  }
 }
 
 export function replanTrip(payload) {

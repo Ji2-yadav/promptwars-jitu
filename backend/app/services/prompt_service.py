@@ -12,6 +12,7 @@ Include assumptions when live facts would normally be needed.
 Use risk labels: low, medium, high.
 Use estimatedCost labels: free, low, medium, high.
 Include accessibility and budget notes inside each item.
+Favor location names that can be opened in Google Maps, but mark any live details as assumptions unless supplied.
 Return exactly this JSON shape:
 {
   "summary": {"destination": string, "tripStyle": string, "riskLevel": "low|medium|high"},

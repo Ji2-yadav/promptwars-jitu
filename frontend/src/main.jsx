@@ -1,29 +1,36 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { RadioTower, Sparkles, Wifi } from "lucide-react";
-import { apiBaseUrl, fetchDemoUpdates, planTripStream, replanTrip } from "./api/client.js";
+import { Sparkles, Wifi, RadioTower } from "lucide-react";
+import { apiBaseUrl, planTripStream, replanTrip, fetchDemoUpdates } from "./api/client.js";
 import { ErrorBanner } from "./components/ErrorBanner.jsx";
-import { ItineraryView } from "./components/ItineraryView.jsx";
-import { LoadingState } from "./components/LoadingState.jsx";
-import { ReplanResult } from "./components/ReplanResult.jsx";
-import { TripForm } from "./components/TripForm.jsx";
+import { TripWizard } from "./components/TripWizard.jsx";
+import { StreamingItineraryView } from "./components/StreamingItineraryView.jsx";
 import { UpdatePanel } from "./components/UpdatePanel.jsx";
+import { ReplanResult } from "./components/ReplanResult.jsx";
+import { LoadingState } from "./components/LoadingState.jsx";
 import "./styles.css";
 
+/* ── App phases ─────────────────────────────────────── */
+// "wizard"   → step-by-step trip setup
+// "planning" → actively streaming itinerary
+// "done"     → itinerary complete, disruption panel visible
+
 function App() {
+  const [phase, setPhase] = useState("wizard"); // "wizard" | "planning" | "done"
   const [trip, setTrip] = useState(null);
   const [itinerary, setItinerary] = useState(null);
   const [updates, setUpdates] = useState([]);
   const [selectedUpdate, setSelectedUpdate] = useState(null);
   const [replanResult, setReplanResult] = useState(null);
   const [error, setError] = useState("");
-  const [planning, setPlanning] = useState(false);
   const [replanning, setReplanning] = useState(false);
   const [disruptionContext, setDisruptionContext] = useState({
     affectedDay: 1,
     disruptionTime: "14:00",
   });
   const [appliedOptionId, setAppliedOptionId] = useState("");
+
+  const hasApi = useMemo(() => Boolean(apiBaseUrl), []);
 
   useEffect(() => {
     fetchDemoUpdates()
@@ -34,14 +41,16 @@ function App() {
       .catch((err) => setError(`Could not load demo updates: ${err.message}`));
   }, []);
 
-  const hasApi = useMemo(() => Boolean(apiBaseUrl), []);
-
+  /* ── Plan handler ───────────────────────────────── */
   async function handlePlan(nextTrip) {
-    setPlanning(true);
+    setPhase("planning");
+    setItinerary(null);
     setError("");
     setReplanResult(null);
+    setTrip(nextTrip);
+
     try {
-      const fallbackPlan = await planTripStream(nextTrip, (event) => {
+      const fallback = await planTripStream(nextTrip, (event) => {
         if (event.type === "summary") {
           setItinerary({
             summary: event.summary,
@@ -51,17 +60,15 @@ function App() {
             tripHealth: event.tripHealth,
           });
         }
-
         if (event.type === "day") {
-          setItinerary((current) => ({
-            ...current,
-            days: [...(current?.days || []), event.day],
+          setItinerary((cur) => ({
+            ...cur,
+            days: [...(cur?.days || []), event.day],
           }));
         }
-
         if (event.type === "complete") {
-          setItinerary((current) => ({
-            ...current,
+          setItinerary((cur) => ({
+            ...cur,
             assumptions: event.assumptions,
             fallbacks: event.fallbacks,
             tripHealth: event.tripHealth,
@@ -69,20 +76,17 @@ function App() {
         }
       });
 
-      if (fallbackPlan) {
-        setItinerary(fallbackPlan);
-      }
-
-      setTrip(nextTrip);
+      if (fallback) setItinerary(fallback);
       setDisruptionContext({ affectedDay: 1, disruptionTime: "14:00" });
       setAppliedOptionId("");
     } catch (err) {
       setError(`Planning failed: ${err.message}`);
     } finally {
-      setPlanning(false);
+      setPhase("done");
     }
   }
 
+  /* ── Replan handler ─────────────────────────────── */
   async function handleReplan() {
     if (!trip || !itinerary || !selectedUpdate) return;
     setReplanning(true);
@@ -95,7 +99,8 @@ function App() {
         affectedDay: disruptionContext.affectedDay,
         disruptionTime: disruptionContext.disruptionTime,
         minimizeChanges: true,
-        currentContext: "Demo mode: current traveler is mid-trip and needs an immediate adjustment.",
+        currentContext:
+          "Demo mode: current traveler is mid-trip and needs an immediate adjustment.",
       });
       setReplanResult(result);
       setAppliedOptionId("");
@@ -106,9 +111,9 @@ function App() {
     }
   }
 
+  /* ── Apply option ───────────────────────────────── */
   function handleApplyOption(option) {
     if (!itinerary) return;
-
     const affectedTitles = new Set(replanResult?.affectedItems || []);
     const affectedDay = option.affectedDay || disruptionContext.affectedDay;
     const replaceFromTime = option.replaceFromTime || disruptionContext.disruptionTime;
@@ -116,23 +121,15 @@ function App() {
 
     const days = itinerary.days.map((day) => {
       if (day.day !== affectedDay) return day;
-
-      const preservedItems = day.items.filter((item) => {
-        const isAffectedByTitle = affectedTitles.has(item.title);
-        const isInsideReplacementWindow =
-          item.time >= replaceFromTime && item.time <= replaceUntilTime;
-        return !isAffectedByTitle && !isInsideReplacementWindow;
+      const preserved = day.items.filter((item) => {
+        const byTitle = affectedTitles.has(item.title);
+        const inWindow = item.time >= replaceFromTime && item.time <= replaceUntilTime;
+        return !byTitle && !inWindow;
       });
-
-      const mergedItems = [...preservedItems, ...option.replacementItems].sort((a, b) =>
+      const merged = [...preserved, ...option.replacementItems].sort((a, b) =>
         a.time.localeCompare(b.time),
       );
-
-      return {
-        ...day,
-        theme: `${day.theme} (replanned)`,
-        items: mergedItems,
-      };
+      return { ...day, theme: `${day.theme} (replanned)`, items: merged };
     });
 
     setItinerary({
@@ -142,12 +139,12 @@ function App() {
         ...itinerary.tripHealth,
         score: Math.max(0, Math.min(100, itinerary.tripHealth.score + 4)),
         issues: itinerary.tripHealth.issues.filter(
-          (issue) => !issue.toLowerCase().includes("affected"),
+          (i) => !i.toLowerCase().includes("affected"),
         ),
         recommendations: [
           option.catchUpPlan,
           ...itinerary.tripHealth.recommendations.filter(
-            (recommendation) => recommendation !== option.catchUpPlan,
+            (r) => r !== option.catchUpPlan,
           ),
         ].slice(0, 4),
       },
@@ -155,62 +152,94 @@ function App() {
     setAppliedOptionId(option.id);
   }
 
+  /* ── Render ─────────────────────────────────────── */
+  const isPlanning = phase === "planning";
+
   return (
-    <main className="app-shell">
-      <div className="backdrop-grid" />
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">
-            <Sparkles size={14} />
-            TripPilot AI
-          </p>
-          <h1>Dynamic Travel Recovery Engine</h1>
+    <div className="app-v2">
+      {/* ── Global top bar ── */}
+      <header className="topbar-v2">
+        <div className="topbar-v2-brand">
+          <Sparkles size={16} className="brand-spark" />
+          <span>TripPilot AI</span>
         </div>
-        <div className={hasApi ? "api-status online" : "api-status"}>
-          {hasApi ? <Wifi size={15} /> : <RadioTower size={15} />}
+        <div className={hasApi ? "api-pill api-pill--on" : "api-pill"}>
+          {hasApi ? <Wifi size={13} /> : <RadioTower size={13} />}
           {hasApi ? "API connected" : "Set VITE_API_BASE_URL"}
         </div>
       </header>
 
       <ErrorBanner message={error} />
 
-      <div className="workspace">
-        <aside className="left-pane">
-          <section className="input-panel">
-            <div className="console-title">
-              <div>
-                <span>Trip setup</span>
-                <strong>Preferences and constraints</strong>
+      {/* ── Phase: Wizard ────────────────────────── */}
+      {phase === "wizard" && (
+        <div className="wizard-page">
+          <div className="wizard-page-left">
+            <div className="wizard-page-headline">
+              <h1>
+                Plan your perfect trip
+                <span className="headline-spark"> with AI</span>
+              </h1>
+              <p>
+                Answer a few questions and TripPilot will stream a personalised day-by-day itinerary built for your pace, budget, and interests.
+              </p>
+              <div className="feature-pills">
+                <span>Real-time streaming</span>
+                <span>Day-by-day plan</span>
+                <span>Risk-aware routing</span>
+                <span>Google Maps recovery links</span>
               </div>
             </div>
-            <TripForm onSubmit={handlePlan} isLoading={planning} />
-          </section>
-          {planning && <LoadingState label="Building structured itinerary" />}
-        </aside>
+          </div>
+          <div className="wizard-page-right">
+            <TripWizard onSubmit={handlePlan} isLoading={isPlanning} />
+          </div>
+        </div>
+      )}
 
-        <ItineraryView itinerary={itinerary} isPlanning={planning} />
+      {/* ── Phase: Planning / Done ────────────────── */}
+      {(phase === "planning" || phase === "done") && (
+        <div className="result-page">
+          {/* Main itinerary stream */}
+          <div className="result-main">
+            <StreamingItineraryView
+              itinerary={itinerary}
+              isPlanning={isPlanning}
+              trip={trip}
+              onReset={() => {
+                setPhase("wizard");
+                setItinerary(null);
+                setTrip(null);
+                setReplanResult(null);
+              }}
+            />
+          </div>
 
-        <aside className="right-pane">
-          <UpdatePanel
-            updates={updates}
-            selectedUpdate={selectedUpdate}
-            onSelect={setSelectedUpdate}
-            onReplan={handleReplan}
-            disabled={!itinerary}
-            isLoading={replanning}
-            context={disruptionContext}
-            onContextChange={setDisruptionContext}
-            dayCount={itinerary?.days?.length || 1}
-          />
-          {replanning && <LoadingState label="Scoring disruption and generating replacements" />}
-          <ReplanResult
-            result={replanResult}
-            onApplyOption={handleApplyOption}
-            appliedOptionId={appliedOptionId}
-          />
-        </aside>
-      </div>
-    </main>
+          {/* Right sidebar — disruption panel, only when done */}
+          {phase === "done" && (
+            <aside className="result-sidebar">
+              <UpdatePanel
+                updates={updates}
+                selectedUpdate={selectedUpdate}
+                onSelect={setSelectedUpdate}
+                onReplan={handleReplan}
+                disabled={!itinerary}
+                isLoading={replanning}
+                context={disruptionContext}
+                onContextChange={setDisruptionContext}
+                dayCount={itinerary?.days?.length || 1}
+              />
+              {replanning && <LoadingState label="Scoring disruption and generating replacements" />}
+              <ReplanResult
+                result={replanResult}
+                onApplyOption={handleApplyOption}
+                appliedOptionId={appliedOptionId}
+              />
+            </aside>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

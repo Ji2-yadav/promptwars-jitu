@@ -6,6 +6,9 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+coverage.xml
+coverage/
 .venv/
 venv/
 
@@ -15,4 +18,3 @@ build/
 .vite/
 
 *.log
-

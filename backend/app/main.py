@@ -11,6 +11,7 @@ from app.routes import health, plan, replan, updates
 
 settings = get_settings()
 allow_origins = settings.allowed_origins or ["http://localhost:5173", "http://localhost:3000"]
+allow_credentials = "*" not in allow_origins
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["20/minute"])
 
@@ -22,7 +23,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

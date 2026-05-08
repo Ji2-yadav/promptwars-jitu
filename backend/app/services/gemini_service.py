@@ -1,5 +1,7 @@
 from datetime import timedelta
-from cachetools import TTLCache, cached
+import asyncio
+
+from cachetools import TTLCache
 
 from app.config import get_settings
 from app.schemas.itinerary import (
@@ -18,8 +20,9 @@ from app.services.prompt_service import (
 )
 from app.services.validation import validate_json
 
-# Cache up to 100 recent itinerary requests for 1 hour to reduce API latency
+# Cache up to 100 recent LLM calls for 1 hour to reduce API latency and quota use.
 llm_cache = TTLCache(maxsize=100, ttl=3600)
+
 
 class GeminiService:
     def __init__(self) -> None:
@@ -70,20 +73,8 @@ class GeminiService:
             return fallback_factory()
 
     async def _call_gemini(self, prompt: str) -> str:
-        import asyncio
-        import time
-
-        # Simple async TTL cache
-        now = time.time()
-        if not hasattr(self, "_cache"):
-            self._cache = {}
-            self._cache_ttl = 3600
-
-        # Clean expired
-        self._cache = {k: v for k, v in self._cache.items() if now - v[1] < self._cache_ttl}
-
-        if prompt in self._cache:
-            return self._cache[prompt][0]
+        if prompt in llm_cache:
+            return llm_cache[prompt]
 
         def run() -> str:
             response = self.client.models.generate_content(
@@ -92,8 +83,11 @@ class GeminiService:
             )
             return getattr(response, "text", "") or str(response)
 
-        result = await asyncio.to_thread(run)
-        self._cache[prompt] = (result, time.time())
+        result = await asyncio.wait_for(
+            asyncio.to_thread(run),
+            timeout=self.settings.gemini_timeout_seconds,
+        )
+        llm_cache[prompt] = result
         return result
 
 

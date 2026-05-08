@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { TripForm } from "./TripForm";
+
+afterEach(cleanup);
 
 describe("TripForm", () => {
   it("renders correctly", () => {
@@ -11,9 +13,9 @@ describe("TripForm", () => {
 
   it("calls onSubmit when submitted", () => {
     const handleSubmit = vi.fn();
-    render(<TripForm onSubmit={handleSubmit} isLoading={false} />);
+    const { container } = render(<TripForm onSubmit={handleSubmit} isLoading={false} />);
     
-    fireEvent.submit(screen.getByLabelText(/Trip planning form/i));
+    fireEvent.submit(container.querySelector("form"));
     
     expect(handleSubmit).toHaveBeenCalled();
   });

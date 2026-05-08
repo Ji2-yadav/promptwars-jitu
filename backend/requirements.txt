@@ -7,6 +7,7 @@ black
 isort
 pytest
 pytest-asyncio
+pytest-cov
 httpx
 slowapi
 cachetools
